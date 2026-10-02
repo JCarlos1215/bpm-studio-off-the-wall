@@ -1,8 +1,6 @@
 # BPM Studio Off The Wall
 
-**Adaptación web de un gestor de descargas multimedia** con cola por lotes, coincidencias Spotify → YouTube y procesamiento local mediante FFmpeg.
-
----
+**Gestor de descargas multimedia web** con cola por lotes, coincidencias Spotify → YouTube y procesamiento local mediante FFmpeg.
 
 ## ✨ Características
 
@@ -14,10 +12,6 @@
 - **Límites**: 30 min / 250 MB por archivo, 500 MB por lote, resultados expiran a 30 min
 - **Restauración opcional** de cola y ajustes de formato
 
-> ⚠️ **Estado actual**: Servidor pendiente de despliegue. La interfaz permite organizar la cola; las descargas no se activan hasta conectar el backend.
-
----
-
 ## 🛠 Stack tecnológico
 
 | Capa | Tecnología |
@@ -26,8 +20,6 @@
 | Procesamiento multimedia | `@ffmpeg/ffmpeg` 0.12.15 (MIT), `@ffmpeg/core` 0.12.10 (GPLv3) |
 | Motores de descarga (servidor) | yt-dlp, gallery-dl, spotDL, FFmpeg |
 | Despliegue objetivo | Vercel (frontend estático) |
-
----
 
 ## 🚀 Puesta en marcha
 
@@ -43,13 +35,9 @@ npx serve .
 
 > El motor FFmpeg WASM se carga bajo demanda al iniciar una conversión. Los medios se procesan en un Web Worker en el dispositivo del usuario.
 
----
-
 ## 🔗 Demo
 
-[Enlace a la demo en Vercel](#) *(pendiente de despliegue)*
-
----
+[Ver demo en vivo](https://jcarlos1215.github.io/bpm-studio-off-the-wall/)
 
 ## 📸 Capturas de pantalla
 
@@ -61,8 +49,6 @@ npx serve .
 
 *Añade capturas reales en la carpeta `screenshots/`.*
 
----
-
 ## 📋 Próximas mejoras
 
 - [ ] Desplegar backend (API de descargas y cola persistente)
@@ -72,8 +58,6 @@ npx serve .
 - [ ] Pruebas E2E y CI/CD
 - [ ] Documentación de API del servidor
 
----
-
 ## 📄 Licencia y créditos
 
 - Código del gestor (módulos nuevos): **GPL-3.0-or-later** — ver `downloads-LICENSE.txt`
@@ -81,7 +65,5 @@ npx serve .
 - `@ffmpeg/core` (binario WASM + codecs): **GPLv3** — ver `vendor/LICENSE-GPLv3.txt`
 - Basado en [GDownloader](https://github.com/hstr0100/GDownloader) (ref. f78416a) de hstr0100
 - Logo de usuario: fuera de licencia GPL
-
----
 
 > **Nota**: Esta es una adaptación web, no la aplicación Java original ejecutándose en el navegador. La compatibilidad de plataformas está sujeta a cambios y restricciones externas.
