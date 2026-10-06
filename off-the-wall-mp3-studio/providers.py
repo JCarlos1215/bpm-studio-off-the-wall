@@ -1,8 +1,11 @@
 """Equivalent source resolution to AllToMP3 using maintained extractors."""
+from contextlib import contextmanager
 import json
 import os
 from html.parser import HTMLParser
 import re
+import shutil
+import tempfile
 import time
 from urllib.parse import urlparse
 
@@ -53,6 +56,26 @@ def ydl_options(**extra):
     }
 
 
+@contextmanager
+def open_downloader(options, factory=None):
+    """Use an optional server session; keep mounted secrets read-only."""
+    cookie_file = os.getenv('YTDLP_COOKIES_FILE', '').strip()
+    factory = factory or YoutubeDL
+    if not cookie_file:
+        with factory(options) as downloader:
+            yield downloader
+        return
+    with tempfile.TemporaryDirectory(prefix='mp3-session-') as directory:
+        cookie_copy = os.path.join(directory, 'cookies.txt')
+        try:
+            shutil.copyfile(cookie_file, cookie_copy)
+            os.chmod(cookie_copy, 0o600)
+        except OSError as exc:
+            raise SourceError('No se pudo leer la sesión configurada en YTDLP_COOKIES_FILE del servidor.') from exc
+        with factory({**options, 'cookiefile': cookie_copy}) as downloader:
+            yield downloader
+
+
 def clean_title(title):
     return re.sub(r'\s*[\[(](?:official.*?|lyrics.*?|audio.*?|video.*?)[\])]\s*', '', title or '', flags=re.I).strip()
 
@@ -80,8 +103,8 @@ def extract_online(query, search_limit=1, playlist=False):
     if provider == 'search':
         query = f'ytsearch{search_limit}:{query}'
         provider = 'youtube'
-    with YoutubeDL(ydl_options(
-        extract_flat='in_playlist', skip_download=True,
+    with open_downloader(ydl_options(
+        extract_flat=True if query.startswith('ytsearch') else 'in_playlist', skip_download=True,
         noplaylist=not playlist, playlistend=MAX_ITEMS,
     )) as ydl:
         info = ydl.extract_info(query, download=False)

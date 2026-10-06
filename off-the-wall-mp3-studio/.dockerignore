@@ -6,3 +6,6 @@ __pycache__
 .pytest_cache
 *.zip
 *.log
+
+*cookies*.txt
+secrets/
