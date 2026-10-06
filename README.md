@@ -1,16 +1,15 @@
 # BPM Studio Off The Wall
 
-**Gestor de descargas multimedia web** con cola por lotes, coincidencias Spotify → YouTube y procesamiento local mediante FFmpeg.
+**Analizador BPM y convertidor multimedia para DJ**, con procesamiento local y Off The Wall MP3 Studio integrado.
 
 ## ✨ Características
 
-- **Cola por lotes** con prioridad, filtros y reintentos automáticos
-- **Coincidencias Spotify → YouTube** (búsqueda, no extracción directa de audio)
-- **Motores de descarga**: yt-dlp, gallery-dl, spotDL
+- **Analizador BPM en tiempo real** con micrófono, espectro, onda y mediciones de señal
 - **Procesamiento de audio/video** en el navegador vía `@ffmpeg/ffmpeg` (WebAssembly)
-- **Listas y galerías** (hasta 20 elementos)
-- **Límites**: 30 min / 250 MB por archivo, 500 MB por lote, resultados expiran a 30 min
-- **Restauración opcional** de cola y ajustes de formato
+- **MP3 Studio** con búsqueda musical, biblioteca, historial y etiquetas ID3
+- **Rekordbox Explorer** para explorar y audicionar una biblioteca USB directamente en el navegador
+- **Analizador DJ local** para estimar tonalidad, Camelot, BPM, energía y sugerir Hot Cues
+- **Video de fondo local** convertido a un formato compatible con navegadores
 
 ## 🛠 Stack tecnológico
 
@@ -18,52 +17,61 @@
 |------|------------|
 | Frontend | HTML, CSS, JavaScript (ESM) |
 | Procesamiento multimedia | `@ffmpeg/ffmpeg` 0.12.15 (MIT), `@ffmpeg/core` 0.12.10 (GPLv3) |
-| Motores de descarga (servidor) | yt-dlp, gallery-dl, spotDL, FFmpeg |
-| Despliegue objetivo | Vercel (frontend estático) |
+| Conversión local | `@ffmpeg/ffmpeg` y WebAssembly |
+| MP3 Studio | Python, Flask, yt-dlp y FFmpeg |
+| Rekordbox Explorer | React, Vite y TypeScript; lectura local de la USB |
+| Ejecución | Frontend estático y servidor local para MP3 Studio |
 
-## 🚀 Puesta en marcha
+## 🚀 Puesta en marcha local
 
 ```bash
 # Clonar el repositorio
 git clone https://github.com/JCarlos1215/bpm-studio-off-the-wall.git
 cd bpm-studio-off-the-wall
-
-# Servir estáticamente (ejemplo con npx serve)
-npx serve .
-# Abre http://localhost:3000
 ```
 
-> El motor FFmpeg WASM se carga bajo demanda al iniciar una conversión. Los medios se procesan en un Web Worker en el dispositivo del usuario.
+En macOS, inicia todo el proyecto con `Iniciar BPM Studio.command`. La página, el video
+de fondo, Rekordbox Explorer y el analizador DJ se sirven desde esta carpeta en
+`127.0.0.1`; no se carga una página principal alojada en otro sitio.
 
-## 🔗 Demo
+La primera vez, prepara las dependencias Python de MP3 Studio con conexión a Internet:
 
-[Ver demo en vivo](https://jcarlos1215.github.io/bpm-studio-off-the-wall/)
+```bash
+./off-the-wall-mp3-studio/Iniciar.command
+```
+
+Cuando aparezca el servidor, detenlo con `Ctrl+C` y abre `Iniciar BPM Studio.command`.
+Mantén abierta la ventana de Terminal mientras uses BPM Studio; al cerrarla, se detienen
+los servidores locales. Requiere Python 3 instalado. El análisis de audio, la conversión,
+Rekordbox Explorer, el video de fondo y el analizador DJ funcionan localmente; las
+búsquedas y descargas de MP3 Studio requieren conexión a servicios externos.
+
+### Off The Wall MP3 Studio
+
+El servidor local de MP3 Studio se inicia automáticamente con el comando principal. Para
+instalar o administrar sus dependencias, consulta
+[`off-the-wall-mp3-studio/README.md`](off-the-wall-mp3-studio/README.md).
+
+**Rekordbox Explorer** se sirve desde su build local en `rekordbox-explorer-main/dist/` y se muestra dentro de esta página. Selecciona una carpeta USB en Chrome, Edge u Opera; otros navegadores pueden seleccionar `export.pdb`. El análisis de la biblioteca ocurre en el navegador, sin subir archivos.
+
+El **Analizador DJ** se encuentra en `key-bpm-analyzer/`. Sus estimaciones son orientativas;
+consulta sus límites y detalles en [`key-bpm-analyzer/README.md`](key-bpm-analyzer/README.md).
 
 ## 📸 Capturas de pantalla
 
 | Vista | Descripción |
 |-------|-------------|
-| `![Cola de descargas](screenshots/queue.png)` | Cola por lotes con prioridad y filtros |
-| `![Coincidencia Spotify](screenshots/spotify-match.png)` | Búsqueda de coincidencias en YouTube |
-| `![Ajustes de formato](screenshots/settings.png)` | Configuración de audio/video |
+| Analizador BPM | Tempo y señal de audio en tiempo real |
+| Convertidor | Conversión local de audio y video |
+| MP3 Studio | Búsqueda y biblioteca musical |
 
 *Añade capturas reales en la carpeta `screenshots/`.*
 
-## 📋 Próximas mejoras
-
-- [ ] Desplegar backend (API de descargas y cola persistente)
-- [ ] Autenticación y gestión de cookies para plataformas privadas
-- [ ] Soporte para SponsorBlock y argumentos avanzados por plataforma
-- [ ] Vigilancia de portapapeles (PWA)
-- [ ] Pruebas E2E y CI/CD
-- [ ] Documentación de API del servidor
-
 ## 📄 Licencia y créditos
 
-- Código del gestor (módulos nuevos): **GPL-3.0-or-later** — ver `downloads-LICENSE.txt`
-- `@ffmpeg/ffmpeg` wrapper: **MIT** — ver `vendor/LICENSE-wrapper.txt`
-- `@ffmpeg/core` (binario WASM + codecs): **GPLv3** — ver `vendor/LICENSE-GPLv3.txt`
-- Basado en [GDownloader](https://github.com/hstr0100/GDownloader) (ref. f78416a) de hstr0100
+- Off The Wall MP3 Studio: **AGPL-3.0-or-later** — ver [su licencia](off-the-wall-mp3-studio/LICENSE)
+- `@ffmpeg/ffmpeg` wrapper: **MIT** — ver `vendor/license-wrapper.txt`
+- `@ffmpeg/core` (binario WASM + codecs): **GPLv3** — ver `vendor/license-gplv3.txt`
 - Logo de usuario: fuera de licencia GPL
 
-> **Nota**: Esta es una adaptación web, no la aplicación Java original ejecutándose en el navegador. La compatibilidad de plataformas está sujeta a cambios y restricciones externas.
+> **Nota**: MP3 Studio requiere el servidor Python local. La conversión de archivos del navegador permanece en este dispositivo.

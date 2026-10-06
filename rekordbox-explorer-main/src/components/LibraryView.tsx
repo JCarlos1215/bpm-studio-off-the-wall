@@ -1,0 +1,178 @@
+import { useState, useEffect } from 'react';
+import { FileDown } from 'lucide-react';
+import { PlaylistSidebar } from './PlaylistSidebar';
+import { TrackTable } from './TrackTable';
+import { PlayerBar } from './PlayerBar';
+import { useAudition } from '@/hooks/useAudition';
+import { FileBrowser } from './FileBrowser';
+import { SearchBar } from './SearchBar';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { Button } from '@/components/ui/button';
+import { useSettings } from '@/hooks/useSettings';
+import { exportTracksToPdf } from '@/lib/pdf-export';
+import { DriveCompatibilityBanner } from './DriveCompatibilityBanner';
+import { useIsMobile } from '@/hooks/use-mobile';
+import type { RekordboxDatabase, Playlist, Track, ViewMode, SortColumn, SortDirection, FileEntry, LibraryPresence, DriveReport } from '@/types/rekordbox';
+
+interface LibraryViewProps {
+  database: RekordboxDatabase;
+  libraries?: LibraryPresence;
+  drive?: DriveReport;
+  rootHandle?: FileSystemDirectoryHandle | null;
+  selectedPlaylist: Playlist | null;
+  onSelectPlaylist: (playlist: Playlist | null) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  sortColumn: SortColumn;
+  sortDirection: SortDirection;
+  onSort: (column: SortColumn) => void;
+  filteredTracks: Track[];
+  fileEntries: FileEntry[];
+  directoryPath: string[];
+  onNavigateToDirectory: (handle: FileSystemDirectoryHandle, name: string) => void;
+  onNavigateUp: () => void;
+  onLoadFileEntries: () => void;
+  onReset: () => void;
+}
+
+export function LibraryView({
+  database,
+  libraries,
+  drive,
+  rootHandle,
+  selectedPlaylist,
+  onSelectPlaylist,
+  searchQuery,
+  onSearchChange,
+  sortColumn,
+  sortDirection,
+  onSort,
+  filteredTracks,
+  fileEntries,
+  directoryPath,
+  onNavigateToDirectory,
+  onNavigateUp,
+  onLoadFileEntries,
+  onReset
+}: LibraryViewProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>('library');
+  const isMobile = useIsMobile();
+  const { 
+    colorScheme, 
+    fontSize, 
+    setColorScheme, 
+    setFontSize,
+    hiddenColumns,
+    toggleColumnVisibility
+  } = useSettings();
+
+  // Load file entries when switching to files mode
+  useEffect(() => {
+    if (viewMode === 'files' && fileEntries.length === 0) {
+      onLoadFileEntries();
+    }
+  }, [viewMode, fileEntries.length, onLoadFileEntries]);
+
+  const currentPlaylistName = selectedPlaylist?.name || 'All Tracks';
+
+  // The queue is whatever is on screen, so next/previous follow the sort and
+  // filter the user is actually looking at.
+  const audition = useAudition(rootHandle ?? null, filteredTracks);
+
+  return (
+    <div className="h-dvh min-h-0 bg-background">
+      <ResizablePanelGroup direction={isMobile ? 'vertical' : 'horizontal'} className="h-full">
+        <ResizablePanel
+          defaultSize={isMobile ? 30 : 24}
+          minSize={isMobile ? 24 : 16}
+          maxSize={40}
+          className="min-h-0 min-w-0"
+        >
+          <PlaylistSidebar
+            playlists={database.playlists}
+            libraries={libraries}
+            rootHandle={rootHandle}
+            selectedPlaylist={selectedPlaylist}
+            onSelectPlaylist={onSelectPlaylist}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            trackCount={database.tracks.length}
+            onReset={onReset}
+            colorScheme={colorScheme}
+            onColorSchemeChange={setColorScheme}
+            fontSize={fontSize}
+            onFontSizeChange={setFontSize}
+            hiddenColumns={hiddenColumns}
+            onToggleColumn={toggleColumnVisibility}
+          />
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        <ResizablePanel defaultSize={isMobile ? 70 : 76} minSize={60} className="min-h-0 min-w-0">
+          <div className="flex h-full flex-col overflow-hidden">
+            {drive && <DriveCompatibilityBanner drive={drive} />}
+            <header className="flex flex-col items-center gap-3 border-b border-border bg-card px-3 py-3 text-center sm:flex-row sm:justify-between sm:px-4 sm:text-left">
+              <div className="flex min-w-0 flex-col items-center gap-1 sm:flex-row sm:gap-4">
+                <h1 className="max-w-full truncate text-lg font-semibold text-foreground">
+                  {viewMode === 'files' ? 'File Browser' : currentPlaylistName}
+                </h1>
+                {viewMode === 'library' && (
+                  <span className="shrink-0 text-sm text-muted-foreground">
+                    {filteredTracks.length} track{filteredTracks.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+
+              {viewMode === 'library' && (
+                <div className="flex w-full items-center justify-center gap-2 sm:w-auto sm:justify-end">
+                  <div className="w-full max-w-lg sm:w-72 sm:max-w-[35vw]">
+                    <SearchBar value={searchQuery} onChange={onSearchChange} />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => exportTracksToPdf(filteredTracks, currentPlaylistName, hiddenColumns)}
+                    title="Export to PDF"
+                  >
+                    <FileDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </header>
+
+            <main className="min-h-0 flex-1 overflow-hidden" style={{ paddingBottom: 'var(--player-h, 0px)' }}>
+              {viewMode === 'library' ? (
+                <TrackTable
+                  onPlay={(t) => void audition.play(t)}
+                  nowPlayingId={audition.track?.id ?? null}
+                  tracks={filteredTracks}
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                  onSort={onSort}
+                  hiddenColumns={hiddenColumns}
+                />
+              ) : (
+                <FileBrowser
+                  entries={fileEntries}
+                  path={directoryPath}
+                  onNavigate={onNavigateToDirectory}
+                  onNavigateUp={onNavigateUp}
+                />
+              )}
+            </main>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      <PlayerBar
+        {...audition}
+        onToggle={() => void audition.toggle()}
+        onSeek={audition.seek}
+        onNext={audition.next}
+        onPrevious={audition.previous}
+        onClose={audition.stop}
+      />
+    </div>
+  );
+}

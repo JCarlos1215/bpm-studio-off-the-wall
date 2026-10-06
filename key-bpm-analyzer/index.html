@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Analizador DJ — BPM Studio</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">OFF THE WALL / ANÁLISIS LOCAL</p>
+      <h1>Analizador DJ</h1>
+      <p class="intro">Analiza tonalidad, tempo y energía; encuentra puntos útiles para preparar tus Hot Cues.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="file-heading">
+      <h2 id="file-heading">Analiza una pista</h2>
+      <p class="muted">El audio se procesa en este navegador y no se sube. Formatos admitidos según tu navegador. Límite local: 150 MB y 20 minutos por pista.</p>
+      <label class="file-picker">
+        <span class="file-icon" aria-hidden="true">♫</span>
+        <strong id="file-label">Selecciona un archivo de audio</strong>
+        <span>MP3, WAV, FLAC, AAC, M4A u otro formato compatible</span>
+        <input id="audio-file" type="file" accept="audio/*">
+      </label>
+      <audio id="audio-player" controls hidden></audio>
+      <div id="status" class="status" role="status">Elige una pista para comenzar el análisis local.</div>
+      <progress id="progress" max="100" value="0" hidden></progress>
+    </section>
+
+    <section class="results" aria-label="Resultados del análisis" aria-live="polite">
+      <article class="result-card key-card">
+        <span class="result-label">TONALIDAD</span>
+        <strong id="key-result">—</strong>
+        <span id="camelot-result" class="result-detail">Camelot —</span>
+      </article>
+      <article class="result-card">
+        <span class="result-label">TEMPO ESTIMADO</span>
+        <strong><span id="bpm-result">—</span><small> BPM</small></strong>
+        <span id="bpm-detail" class="result-detail">Análisis automático</span>
+      </article>
+      <article class="result-card">
+        <span class="result-label">ENERGÍA</span>
+        <strong><span id="energy-result">—</span><small>/ 100</small></strong>
+        <span id="energy-detail" class="result-detail">Intensidad relativa</span>
+      </article>
+    </section>
+
+    <section class="panel cues-panel" aria-labelledby="cues-heading">
+      <div class="section-heading">
+        <div>
+          <h2 id="cues-heading">Sugerencias de Hot Cues</h2>
+          <p class="muted">Puntos orientativos; escucha la pista y ajústalos a tu mezcla.</p>
+        </div>
+        <button id="export-cues" type="button" disabled>Exportar CSV</button>
+      </div>
+      <ol id="cue-list" class="cue-list">
+        <li class="empty-cues">Carga una pista para sugerir puntos de entrada, intensidad y salida.</li>
+      </ol>
+      <p class="disclaimer">Los resultados son estimaciones de audio y no sustituyen la revisión auditiva. El análisis de BPM y cues funciona sin conexión.</p>
+    </section>
+  </main>
+</body>
+</html>

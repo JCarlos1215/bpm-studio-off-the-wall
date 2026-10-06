@@ -1,2 +1,17 @@
 downloads-source.zip
 .DS_Store
+.vscode/
+off-the-wall-mp3-studio.zip
+
+# Local Python environments and generated files
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+**/.pytest_cache/
+off-the-wall-mp3-studio/data/
+
+# Installed JavaScript dependencies
+node_modules/
+**/node_modules/
