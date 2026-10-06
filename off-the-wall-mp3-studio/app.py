@@ -24,7 +24,7 @@ def create_app(data_dir=None):
     @app.before_request
     def protect():
         password = os.getenv('APP_PASSWORD', '')
-        if password:
+        if password and request.path != '/api/status':
             auth = request.authorization
             if not auth or not hmac.compare_digest(auth.password or '', password):
                 return Response('Acceso protegido. Usa cualquier nombre de usuario y la contraseña del servidor.', 401,

@@ -99,7 +99,23 @@ Abre `http://localhost:8093`. Usa cualquier nombre de usuario y la contraseña d
 
 Para alojamiento remoto usa un servidor con disco persistente y soporte para procesos FFmpeg, por ejemplo una VM o un servicio de contenedores. Pon HTTPS delante mediante un proxy inverso y configura `APP_PASSWORD`. Ejecuta **una instancia** del servidor para esta implementación de la cola. No se debe ejecutar con múltiples procesos compartiendo SQLite: los trabajadores están en memoria.
 
-El backend no se puede ejecutar íntegramente en hosting estático ni en Cloudflare Workers/Sites: necesita binarios, subprocesos y almacenamiento en disco. Este proyecto se entrega ejecutable localmente y con configuración Docker; no se ha publicado un frontend desconectado de su servidor.
+### Render gratuito
+
+El repositorio incluye `render.yaml` para crear el servidor como Blueprint. En Render,
+selecciona **New → Blueprint**, conecta este repositorio y despliega el servicio
+`jcarlos1215-bpm-studio-off-the-wall-mp3`. Render genera una contraseña `APP_PASSWORD`;
+consúltala en las variables de entorno del servicio para iniciar sesión. El nombre de
+usuario de la ventana de acceso puede ser cualquiera.
+
+El iframe de MP3 Studio en GitHub Pages apunta a ese servicio. La contraseña protege las
+conversiones; no la pongas en el repositorio ni en la URL. El servicio gratuito puede
+dormirse tras 15 minutos sin tráfico y tardar cerca de un minuto en despertar. Su sistema
+de archivos es temporal: historial, MP3 y ZIP se pierden al reiniciar, dormir o volver a
+desplegar el servicio. El nivel gratuito tiene recursos limitados; las listas se limitan a
+20 canciones y a una conversión simultánea para reducir la carga. Descarga tus archivos
+antes de que el servicio se reinicie.
+
+El backend no se puede ejecutar íntegramente en hosting estático ni en Cloudflare Workers/Sites: necesita binarios y subprocesos. Para almacenamiento permanente se necesita un servidor con disco persistente.
 
 ## Verificación
 

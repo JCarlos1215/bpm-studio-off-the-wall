@@ -163,6 +163,7 @@ def test_cancel_during_resolution(app, monkeypatch):
 def test_password(app, monkeypatch):
     monkeypatch.setenv('APP_PASSWORD','test-password')
     client = app.test_client()
+    assert client.get('/api/status').status_code == 200
     assert client.get('/api/jobs').status_code == 401
     import base64
     auth = base64.b64encode(b'user:test-password').decode()

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: jcarlos1215-bpm-studio-off-the-wall-mp3
+    runtime: docker
+    plan: free
+    dockerfilePath: ./off-the-wall-mp3-studio/Dockerfile
+    dockerContext: ./off-the-wall-mp3-studio
+    healthCheckPath: /api/status
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATA_DIR
+        value: /tmp/data
+      - key: APP_PASSWORD
+        generateValue: true
+      - key: MAX_PLAYLIST_ITEMS
+        value: 20
+      - key: MAX_CONCURRENT_JOBS
+        value: 1
+      - key: MP3_STUDIO_FRAME_ANCESTORS
+        value: "'self' https://jcarlos1215.github.io http://localhost:8080 http://127.0.0.1:8080"
