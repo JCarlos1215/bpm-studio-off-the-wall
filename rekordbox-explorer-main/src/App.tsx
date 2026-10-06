@@ -6,11 +6,13 @@ import { Analytics } from "@vercel/analytics/react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
+const appBasePath = new URL(".", window.location.href).pathname;
+
 const App = () => (
   <TooltipProvider>
     <Toaster />
     <Sonner />
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <BrowserRouter basename={appBasePath}>
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="*" element={<NotFound />} />
