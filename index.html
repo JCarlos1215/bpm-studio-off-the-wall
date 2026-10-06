@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#030303"><title>Off The Wall — BPM Studio</title><meta name="description" content="Analizador de tempo y señal de audio en tiempo real. Privado, local y diseñado para DJ."><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23030303'/%3E%3Cpath d='M6 17h4l3-9 5 17 4-12 2 4h3' fill='none' stroke='%2365b6ff' stroke-width='3'/%3E%3C/svg%3E"><link rel="stylesheet" href="styles.css"><script type="module" src="app.js"></script><script type="module" src="converter.js"></script><script type="module" src="downloader.js"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#030303"><title>Off The Wall — BPM Studio</title><meta name="description" content="Analizador de tempo y señal de audio en tiempo real. Privado, local y diseñado para DJ."><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23030303'/%3E%3Cpath d='M6 17h4l3-9 5 17 4-12 2 4h3' fill='none' stroke='%2365b6ff' stroke-width='3'/%3E%3C/svg%3E"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="rekordbox.css"><script type="module" src="app.js"></script><script type="module" src="converter.js"></script><script type="module" src="downloader.js"></script></head>
 <body>
 <div class="shell">
 <header><a class="brand" href="./" aria-label="Off The Wall, inicio"><img src="assets/logo.png" alt="Off The Wall"></a><div class="identity">BPM STUDIO<span>ANALIZADOR DE AUDIO</span></div><div class="privacy"><span class="lock">◈</span> HERRAMIENTAS PARA DJ</div></header>
 <main>
-<nav class="studio-nav" aria-label="Herramientas"><button id="showBpm" class="selected" aria-pressed="true" aria-controls="bpmView">Analizador BPM</button><button id="showConverter" aria-pressed="false" aria-controls="converterView">Convertidor de audio y video</button><button id="showDownloader" aria-pressed="false" aria-controls="downloaderView">Descargar por enlace</button></nav>
+<nav class="studio-nav studio-nav-four" aria-label="Herramientas"><button id="showBpm" class="selected" aria-pressed="true" aria-controls="bpmView">Analizador BPM</button><button id="showConverter" aria-pressed="false" aria-controls="converterView">Convertidor de audio y video</button><button id="showDownloader" aria-pressed="false" aria-controls="downloaderView">Descargar por enlace</button><button id="showRekordbox" aria-pressed="false" aria-controls="rekordboxView">Rekordbox Explorer</button></nav>
 <div id="bpmView">
 <div class="topline"><div><span class="eyebrow">OFF THE WALL / AUDIO TOOLS</span><h1>BPM live Detector</h1></div><span class="status" id="status" role="status"><i></i><span id="statusText">Micrófono apagado</span></span></div>
 <section class="console" aria-label="Analizador BPM">
@@ -35,6 +35,10 @@
 <div class="topline"><div><span class="eyebrow">OFF THE WALL / DOWNLOAD TOOLS</span><h1 id="downloaderTitle">Descargador Pro</h1><p class="download-lead">Guarda audio MP3 o video MP4 desde un enlace.</p></div><span class="status" id="serverBadge">Servicio remoto</span></div>
 <div class="downloader-frame-wrap" id="downloaderFrameWrap"><iframe id="downloaderFrame" class="downloader-frame" title="Descargador Pro de audio y video" loading="lazy"></iframe></div>
 <details><summary>Compatibilidad y privacidad <span>+</span></summary><p>El servicio procesa el enlace en un servidor y devuelve un archivo MP3 o MP4. La compatibilidad depende de la plataforma, la región y el servidor; algunos enlaces pueden no estar disponibles.</p><p>No envíes enlaces privados ni contenido protegido. El analizador BPM y el convertidor de archivos siguen funcionando localmente en este dispositivo.</p></details>
+</section>
+<section id="rekordboxView" hidden aria-labelledby="rekordboxTitle">
+<div class="topline"><div><span class="eyebrow">OFF THE WALL / USB TOOLS</span><h1 id="rekordboxTitle">Rekordbox Explorer</h1></div><span class="status">Biblioteca USB</span></div>
+<div class="rekordbox-frame-wrap"><iframe class="rekordbox-frame" src="./rekordbox/" title="Rekordbox Explorer" loading="lazy"></iframe></div>
 </section>
 </main><footer><span>OFF THE WALL<span class="footer-slash"> / </span>BPM STUDIO</span><span>HECHO PARA ESCUCHAR.</span></footer>
 </div></body></html>
