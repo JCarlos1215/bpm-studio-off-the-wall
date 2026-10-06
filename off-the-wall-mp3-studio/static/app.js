@@ -6,7 +6,13 @@ if (embedded) document.documentElement.classList.add('embedded');
 const terminal = new Set(['completed', 'partial', 'failed', 'cancelled']);
 const names = { queued:'En cola', resolving:'Leyendo enlace', processing:'En curso', searching:'Buscando audio', downloading:'Descargando', converting:'Convirtiendo', tagging:'Añadiendo etiquetas', completed:'Completada', partial:'Con errores', failed:'Error', cancelled:'Cancelada' };
 let jobs = [], mode = 'link', view = 'convert', filter = 'all', results = [], pendingDelete = null, lastData = '', toastTimer;
+const passwordStorageKey = 'alltomp3-server-password';
 let serverPassword = '';
+let usingRememberedPassword = false;
+try {
+  serverPassword = localStorage.getItem(passwordStorageKey) || '';
+  usingRememberedPassword = Boolean(serverPassword);
+} catch {}
 let preferences = { tags:true, lyrics:true, bitrate:256 };
 try { preferences = { ...preferences, ...JSON.parse(localStorage.getItem('alltomp3-preferences') || '{}') }; } catch {}
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -25,6 +31,13 @@ async function api(path, options = {}) {
   const response = await fetch(path, { ...options, headers });
   if (response.status === 401) {
     const login = $('#server-login-dialog');
+    if (usingRememberedPassword) {
+      usingRememberedPassword = false;
+      serverPassword = '';
+      try { localStorage.removeItem(passwordStorageKey); } catch {}
+      $('#server-login-error').textContent = 'La contraseña guardada ya no es válida. Introduce la contraseña actual.';
+      $('#server-login-error').hidden = false;
+    }
     if (!login.open) login.showModal();
     const error = new Error('La contraseña no es correcta.');
     error.status = response.status;
@@ -49,8 +62,21 @@ $('#server-login-form').addEventListener('submit', async (event) => {
   $('#server-login-submit').disabled = true;
   $('#server-login-error').hidden = true;
   serverPassword = password;
+  usingRememberedPassword = false;
   try {
     const data = await api('/api/jobs');
+    if ($('#remember-server-password').checked) {
+      try {
+        localStorage.setItem(passwordStorageKey, password);
+        usingRememberedPassword = true;
+      } catch {
+        toast('Conectado, pero el navegador no pudo recordar la contraseña.', true);
+      }
+    } else {
+      try { localStorage.removeItem(passwordStorageKey); } catch {
+        toast('Conectado, pero el navegador no pudo borrar la contraseña guardada.', true);
+      }
+    }
     jobs = data.jobs;
     lastData = JSON.stringify(jobs);
     render();

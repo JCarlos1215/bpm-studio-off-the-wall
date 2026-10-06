@@ -105,7 +105,10 @@ El repositorio incluye `render.yaml` para crear el servidor como Blueprint. En R
 selecciona **New → Blueprint**, conecta este repositorio y despliega el servicio
 `jcarlos1215-bpm-studio-off-the-wall-mp3`. Render genera una contraseña `APP_PASSWORD`;
 consúltala en las variables de entorno del servicio para escribirla en el formulario de
-acceso de MP3 Studio. La contraseña solo se conserva en la pestaña actual.
+acceso de MP3 Studio. La opción **Recordar en este dispositivo** guarda la contraseña en
+el almacenamiento local del navegador y permite conectarse automáticamente en próximas
+visitas; desmárcala para no guardarla. Cualquier persona que use ese mismo perfil del
+navegador podrá acceder a MP3 Studio mientras la contraseña esté guardada.
 
 El iframe de MP3 Studio en GitHub Pages apunta a ese servicio. La contraseña protege las
 conversiones; no la pongas en el repositorio ni en la URL. El servicio gratuito puede

@@ -26,8 +26,9 @@
 
 La versión estática está publicada en [GitHub Pages](https://jcarlos1215.github.io/bpm-studio-off-the-wall/).
 El analizador BPM, el convertidor, Rekordbox Explorer y el analizador DJ funcionan en el
-navegador. MP3 Studio se conecta al servidor Python gratuito de Render, requiere iniciar
-sesión y puede tardar cerca de un minuto en despertar después de estar inactivo. Su
+navegador. MP3 Studio se conecta al servidor Python gratuito de Render; puedes elegir
+recordar la contraseña en el navegador para conectarte automáticamente en futuras visitas.
+El servidor puede tardar cerca de un minuto en despertar después de estar inactivo. Su
 almacenamiento no es permanente; descarga tus conversiones antes de que el servicio se
 reinicie. Para configurar tu propia instancia, sigue las instrucciones de
 [`off-the-wall-mp3-studio/README.md`](off-the-wall-mp3-studio/README.md#render-gratuito).
