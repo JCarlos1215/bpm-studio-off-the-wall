@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#030303">
+  <title>Off The Wall — MP3 Studio</title>
+  <meta name="description" content="Busca, convierte y organiza tu música en MP3 con etiquetas, portadas y letras.">
+  <link rel="icon" href="/static/icon.svg?v=otw-1" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css?v=otw-1">
+  <script src="/static/app.js?v=otw-1" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="studio-header">
+      <a class="brand" href="/" aria-label="Off The Wall, inicio"><img src="/static/logo.png" alt="Off The Wall" width="300" height="225"></a>
+      <div class="identity">BPM STUDIO<span>CONVERTIDOR DE MÚSICA</span></div>
+      <div class="privacy"><span class="lock">◈</span> HERRAMIENTAS PARA DJ</div>
+    </header>
+    <nav class="studio-nav" aria-label="Navegación principal">
+      <button class="nav-item active" data-view="convert" aria-pressed="true" aria-controls="convert-view"><svg><use href="/static/icons.svg#convert"/></svg>Descargar y convertir</button>
+      <button class="nav-item" data-view="library" aria-pressed="false" aria-controls="library-view"><svg><use href="/static/icons.svg#library"/></svg>Mi biblioteca<span id="library-count" class="nav-count">0</span></button>
+      <button class="nav-item" data-view="history" aria-pressed="false" aria-controls="history-view"><svg><use href="/static/icons.svg#clock"/></svg>Historial</button>
+      <button class="nav-item settings-nav" id="settings-button"><svg><use href="/static/icons.svg#settings"/></svg>Preferencias</button>
+    </nav>
+    <div class="topbar"><span id="breadcrumb">Off The Wall <span>/</span> <strong>Descargas</strong></span><div class="server-status" id="server-status"><span></span>Conectando…</div></div>
+    <main>
+      <section id="convert-view">
+        <div class="hero">
+          <div class="eyebrow">OFF THE WALL / DOWNLOAD MANAGER</div>
+          <h1>Descargas</h1>
+          <p>Enlaces, canciones y playlists. Todo en tu biblioteca.</p>
+        </div>
+        <div class="download-stats" aria-label="Resumen de conversiones">
+          <article><strong id="stat-total">0</strong><span>Conversiones</span></article>
+          <article><strong id="stat-active">0</strong><span>Procesando</span></article>
+          <article><strong id="stat-ready">0</strong><span>Canciones listas</span></article>
+          <article><strong id="stat-errors">0</strong><span>Con error</span></article>
+        </div>
+        <section class="converter-card" aria-label="Convertir música">
+          <div class="converter-intro"><h2>Añadir música</h2><p>Pega un enlace, busca una canción o importa una lista para convertirla a MP3.</p></div>
+          <div class="mode-tabs" role="tablist" aria-label="Origen de música">
+            <button class="selected" data-mode="link" role="tab" aria-selected="true"><svg><use href="/static/icons.svg#link"/></svg>Enlace</button>
+            <button data-mode="search" role="tab" aria-selected="false"><svg><use href="/static/icons.svg#search"/></svg>Buscar canción</button>
+            <button data-mode="playlist" role="tab" aria-selected="false"><svg><use href="/static/icons.svg#list"/></svg>Lista o álbum</button>
+          </div>
+          <form id="convert-form">
+            <label for="query" id="query-label">PEGA EL ENLACE DE TU CANCIÓN</label>
+            <div class="input-row"><svg><use href="/static/icons.svg#link"/></svg><input id="query" type="text" required maxlength="1000" autocomplete="off" placeholder="https://www.youtube.com/watch?v=…"><button class="primary" id="submit-button" type="submit">Convertir a MP3<svg><use href="/static/icons.svg#arrow"/></svg></button></div>
+            <div class="form-error" id="form-error" role="alert" hidden></div>
+            <div class="converter-options"><div class="source-badges"><span class="youtube">▶ <b>YouTube</b></span><span class="soundcloud">☁ <b>SoundCloud</b></span><span class="spotify">◉ <b>Spotify</b></span><span class="deezer">▥ <b>Deezer</b></span></div><label class="quality-label" for="bitrate">Calidad <select id="bitrate"><option value="128">128 kbps</option><option value="192">192 kbps</option><option value="256" selected>256 kbps</option><option value="320">320 kbps</option></select></label></div>
+          </form>
+          <div class="card-bottom"><span><svg><use href="/static/icons.svg#check"/></svg> Etiquetas y portada <b id="tags-label">activadas</b></span><span><svg><use href="/static/icons.svg#check"/></svg> Letras <b id="lyrics-label">activadas</b></span><span class="mp3-label">MP3 <span>·</span> UNIVERSAL</span></div>
+        </section>
+        <section id="search-section" hidden><div class="section-heading"><h2>Resultados de búsqueda</h2><span id="search-count"></span></div><div id="search-results"></div></section>
+        <section class="queue-section"><div class="section-heading"><h2>Tu cola de conversiones <span id="queue-count">0</span></h2><button id="show-history" class="text-button">Ver historial <span>↗</span></button></div><div id="queue"></div></section>
+        <div class="features"><div><span class="feature-icon"><svg><use href="/static/icons.svg#sound"/></svg></span><h3>Listo para escuchar</h3><p>MP3 compatible con tus dispositivos.<br>Elige la calidad que prefieras.</p></div><div><span class="feature-icon"><svg><use href="/static/icons.svg#tag"/></svg></span><h3>Cada detalle, en su lugar</h3><p>Título, artista, álbum y portada.<br>Tu biblioteca, bien organizada.</p></div><div><span class="feature-icon"><svg><use href="/static/icons.svg#list"/></svg></span><h3>Una canción. O toda la lista.</h3><p>Convierte álbumes y playlists.<br>Descárgalos juntos en un ZIP.</p></div></div>
+      </section>
+      <section id="library-view" hidden><div class="page-heading"><div class="eyebrow">OFF THE WALL / MUSIC LIBRARY</div><h1>Mi biblioteca</h1><p>Todo lo que has convertido, listo para escuchar.</p></div><div class="library-tools"><input id="library-filter" type="search" placeholder="Filtrar por canción, artista o álbum" aria-label="Filtrar biblioteca"><span id="library-summary"></span></div><div id="library"></div></section>
+      <section id="history-view" hidden><div class="page-heading"><div class="eyebrow">OFF THE WALL / SESSION HISTORY</div><h1>Historial</h1><p>Tus conversiones, sus detalles y un nuevo intento cuando lo necesites.</p></div><div class="history-filters" aria-label="Filtrar historial"><button class="selected" data-filter="all">Todas</button><button data-filter="completed">Completadas</button><button data-filter="active">En curso</button><button data-filter="failed">Con errores</button></div><div id="history"></div></section>
+      <footer><span>OFF THE WALL · MP3 STUDIO <span class="footer-separator">/</span> <a href="https://github.com/AllToMP3" target="_blank" rel="noopener">Motor inspirado en AllToMP3 ↗</a></span><span>Convierte contenido propio o con permiso de descarga.</span></footer>
+    </main>
+  </div>
+  <dialog id="settings-dialog"><div class="dialog-heading"><h2>Preferencias</h2><button class="icon-button" data-close="settings-dialog" aria-label="Cerrar">×</button></div><p>Se aplican a las próximas conversiones.</p><label class="toggle-row"><span><b>Etiquetas y portada</b><small>Añade título, artista, álbum, género y carátula.</small></span><input id="tags-option" type="checkbox" checked></label><label class="toggle-row"><span><b>Incluir letras</b><small>Se añaden al MP3 cuando están disponibles.</small></span><input id="lyrics-option" type="checkbox" checked></label><div class="info-box" id="spotify-info">Comprobando la conexión con Spotify…</div><div class="info-box">Spotify y Deezer proporcionan los datos de las canciones. El audio se busca en YouTube y puede ser una versión diferente.</div><button class="primary dialog-save" data-close="settings-dialog">Guardar preferencias</button></dialog>
+  <dialog id="track-dialog"><div class="dialog-heading"><h2>Detalles de la canción</h2><button class="icon-button" data-close="track-dialog" aria-label="Cerrar">×</button></div><div id="track-detail"></div></dialog>
+  <dialog id="confirm-dialog"><div class="dialog-heading"><h2>Eliminar conversión</h2><button class="icon-button" data-close="confirm-dialog" aria-label="Cerrar">×</button></div><p>Se eliminarán esta entrada del historial y sus archivos MP3 del servidor.</p><div class="confirm-actions"><button class="secondary" data-close="confirm-dialog">Conservar</button><button class="primary danger" id="confirm-delete">Eliminar</button></div></dialog>
+  <div id="toast" role="status" hidden></div>
+</body>
+</html>

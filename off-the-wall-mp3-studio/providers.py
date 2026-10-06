@@ -1,0 +1,243 @@
+"""Equivalent source resolution to AllToMP3 using maintained extractors."""
+import os
+import re
+import time
+from urllib.parse import urlparse
+
+import requests
+from yt_dlp import YoutubeDL
+
+
+class SourceError(ValueError):
+    pass
+
+
+MAX_ITEMS = int(os.getenv('MAX_PLAYLIST_ITEMS', '100'))
+HTTP_TIMEOUT = 20
+HEADERS = {'User-Agent': 'AllToMP3-Web/1.0 (https://github.com/AllToMP3)'}
+
+
+def source_type(query):
+    query = query.strip()
+    if not query:
+        raise SourceError('Introduce un enlace o el nombre de una canción.')
+    if len(query) > 1000:
+        raise SourceError('La búsqueda es demasiado larga.')
+    if not re.match(r'^https?://', query, re.I):
+        if '://' in query or query.startswith(('//', 'file:', 'spotify:')):
+            raise SourceError('Usa un enlace HTTPS completo o una búsqueda por nombre.')
+        return 'search'
+    parsed = urlparse(query)
+    if parsed.scheme != 'https' or parsed.username or parsed.password or parsed.port not in (None, 443):
+        raise SourceError('Usa un enlace HTTPS sin credenciales ni puertos especiales.')
+    host = (parsed.hostname or '').lower()
+    hosts = {
+        'youtube': {'youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'},
+        'soundcloud': {'soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com'},
+        'spotify': {'open.spotify.com'},
+        'deezer': {'deezer.com', 'www.deezer.com'},
+    }
+    for provider, allowed in hosts.items():
+        if host in allowed:
+            return provider
+    raise SourceError('Enlace no compatible. Usa YouTube, SoundCloud, Spotify o Deezer.')
+
+
+def ydl_options(**extra):
+    return {
+        'quiet': True, 'no_warnings': True, 'socket_timeout': 20,
+        'retries': 2, 'extractor_retries': 2, 'cachedir': False,
+        'js_runtimes': {'node': {}}, **extra,
+    }
+
+
+def clean_title(title):
+    return re.sub(r'\s*[\[(](?:official.*?|lyrics.*?|audio.*?|video.*?)[\])]\s*', '', title or '', flags=re.I).strip()
+
+
+def video_track(info, provider='youtube'):
+    artist = info.get('artist') or info.get('creator') or info.get('uploader') or ''
+    title = info.get('track') or clean_title(info.get('title', 'Sin título'))
+    if not info.get('track') and ' - ' in title:
+        artist, title = title.split(' - ', 1)
+    url = info.get('webpage_url') or info.get('url', '')
+    if provider == 'youtube' and not url.startswith('https://'):
+        url = 'https://www.youtube.com/watch?v=' + info['id']
+    if url:
+        source_type(url)
+    return {
+        'title': title, 'artist': artist, 'album': info.get('album') or '',
+        'genre': info.get('genre') or '', 'duration': info.get('duration') or 0,
+        'cover': info.get('thumbnail') or '', 'source_url': url,
+        'source': provider, 'year': '', 'track_number': info.get('track_number') or '',
+    }
+
+
+def extract_online(query, search_limit=1, playlist=False):
+    provider = source_type(query)
+    if provider == 'search':
+        query = f'ytsearch{search_limit}:{query}'
+        provider = 'youtube'
+    with YoutubeDL(ydl_options(
+        extract_flat='in_playlist', skip_download=True,
+        noplaylist=not playlist, playlistend=MAX_ITEMS,
+    )) as ydl:
+        info = ydl.extract_info(query, download=False)
+    if not info:
+        raise SourceError('No se encontró audio disponible para esta búsqueda.')
+    entries = info.get('entries')
+    raw = list(entries)[:MAX_ITEMS] if entries is not None else [info]
+    tracks = [video_track(item, provider) for item in raw if item]
+    if not tracks:
+        raise SourceError('La lista está vacía o sus canciones no están disponibles.')
+    return info.get('title') or tracks[0]['title'], tracks
+
+
+def get_json(url, **kwargs):
+    response = requests.get(url, timeout=HTTP_TIMEOUT, headers=HEADERS, **kwargs)
+    response.raise_for_status()
+    return response.json()
+
+
+def deezer_track(item, album=None):
+    album = album or item.get('album') or {}
+    return {
+        'title': item.get('title', ''), 'artist': (item.get('artist') or {}).get('name', ''),
+        'album': album.get('title', ''), 'genre': ((album.get('genres') or {}).get('data') or [{}])[0].get('name', ''),
+        'duration': item.get('duration') or 0, 'cover': album.get('cover_xl') or album.get('cover_big') or '',
+        'source_url': item.get('link') or f"https://www.deezer.com/track/{item['id']}",
+        'source': 'deezer', 'year': (item.get('release_date') or album.get('release_date') or '')[:4],
+        'track_number': item.get('track_position') or '',
+    }
+
+
+def deezer_resolve(url):
+    match = re.search(r'/(track|album|playlist)/(\d+)', urlparse(url).path)
+    if not match:
+        raise SourceError('Usa el enlace completo de una canción, álbum o lista de Deezer.')
+    kind, identifier = match.groups()
+    info = get_json(f'https://api.deezer.com/{kind}/{identifier}')
+    if info.get('error'):
+        raise SourceError('Deezer no pudo acceder a este enlace.')
+    if kind == 'track':
+        return info['title'], [deezer_track(info)]
+    page = info.get('tracks', {})
+    items = page.get('data', [])
+    while page.get('next') and len(items) < MAX_ITEMS:
+        next_url = page['next']
+        if urlparse(next_url).hostname != 'api.deezer.com':
+            break
+        page = get_json(next_url.replace('http://', 'https://', 1))
+        items.extend(page.get('data', []))
+    tracks = [deezer_track(item, info if kind == 'album' else None) for item in items[:MAX_ITEMS]]
+    if not tracks:
+        raise SourceError('La lista de Deezer está vacía o no es pública.')
+    return info.get('title', 'Deezer'), tracks
+
+
+def spotify_token():
+    client = os.getenv('SPOTIFY_CLIENT_ID')
+    secret = os.getenv('SPOTIFY_CLIENT_SECRET')
+    if not client or not secret:
+        raise SourceError('Spotify requiere SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET en el archivo .env del servidor.')
+    response = requests.post(
+        'https://accounts.spotify.com/api/token', auth=(client, secret),
+        data={'grant_type': 'client_credentials'}, timeout=HTTP_TIMEOUT,
+    )
+    if response.status_code != 200:
+        raise SourceError('Spotify rechazó las credenciales configuradas en el servidor.')
+    return response.json()['access_token']
+
+
+def spotify_track(item, album=None):
+    album = album or item.get('album') or {}
+    images = album.get('images') or []
+    return {
+        'title': item.get('name', ''), 'artist': ', '.join(a['name'] for a in item.get('artists', [])),
+        'album': album.get('name', ''), 'genre': '', 'duration': (item.get('duration_ms') or 0) / 1000,
+        'cover': images[0]['url'] if images else '', 'source': 'spotify',
+        'source_url': (item.get('external_urls') or {}).get('spotify', ''),
+        'year': album.get('release_date', '')[:4], 'track_number': item.get('track_number', ''),
+    }
+
+
+def spotify_resolve(url):
+    match = re.search(r'/(track|album|playlist)/([A-Za-z0-9]+)', urlparse(url).path)
+    if not match:
+        raise SourceError('Usa el enlace completo de una canción, álbum o lista de Spotify.')
+    kind, identifier = match.groups()
+    headers = {**HEADERS, 'Authorization': 'Bearer ' + spotify_token()}
+
+    def fetch(path):
+        response = requests.get('https://api.spotify.com/v1/' + path, headers=headers, timeout=HTTP_TIMEOUT)
+        if response.status_code != 200:
+            raise SourceError(f'Spotify devolvió HTTP {response.status_code}. Comprueba que el enlace es público y tu aplicación tiene acceso a este recurso.')
+        return response.json()
+
+    info = fetch(f'{kind}s/{identifier}')
+    if kind == 'track':
+        return info['name'], [spotify_track(info)]
+    page = info.get('tracks') or fetch(f'playlists/{identifier}/items')
+    items = []
+    while True:
+        for row in page.get('items', []):
+            item = (row.get('track') or row.get('item')) if kind == 'playlist' else row
+            if item and not item.get('is_local') and item.get('type', 'track') == 'track':
+                items.append(spotify_track(item, info if kind == 'album' else None))
+            if len(items) >= MAX_ITEMS:
+                break
+        next_url = page.get('next')
+        if len(items) >= MAX_ITEMS or not next_url:
+            break
+        if not next_url.startswith('https://api.spotify.com/v1/'):
+            break
+        page = fetch(next_url.removeprefix('https://api.spotify.com/v1/'))
+    if not items:
+        raise SourceError('La lista de Spotify está vacía o no es accesible con estas credenciales.')
+    return info.get('name', 'Spotify'), items
+
+
+def resolve(query, playlist=False):
+    provider = source_type(query)
+    if provider == 'spotify':
+        return spotify_resolve(query)
+    if provider == 'deezer':
+        return deezer_resolve(query)
+    return extract_online(query, playlist=playlist)
+
+
+def search(query):
+    if source_type(query) != 'search':
+        raise SourceError('Para buscar escribe un artista o canción. Los enlaces se convierten desde la pestaña Enlace.')
+    return extract_online(query, search_limit=8)[1]
+
+
+def enrich(track, include_lyrics):
+    """Metadata failures must never discard a successfully downloaded song."""
+    warnings = []
+    if not track.get('album'):
+        try:
+            results = get_json('https://itunes.apple.com/search', params={
+                'term': f"{track['artist']} {track['title']}", 'entity': 'song', 'limit': 5,
+            }).get('results', [])
+            # Only accept reasonably matching title/artist, never the first arbitrary hit.
+            from difflib import SequenceMatcher
+            best = max(results, key=lambda r: SequenceMatcher(None, track['title'].lower(), r.get('trackName', '').lower()).ratio(), default=None)
+            if best and SequenceMatcher(None, track['title'].lower(), best.get('trackName', '').lower()).ratio() > .75 and SequenceMatcher(None, track['artist'].lower(), best.get('artistName', '').lower()).ratio() > .65:
+                for field, key in [('album', 'collectionName'), ('genre', 'primaryGenreName'), ('track_number', 'trackNumber')]:
+                    track[field] = track.get(field) or best.get(key, '')
+                track['year'] = track.get('year') or best.get('releaseDate', '')[:4]
+                track['cover'] = best.get('artworkUrl100', track.get('cover', '')).replace('100x100bb', '600x600bb')
+        except (requests.RequestException, ValueError, KeyError):
+            warnings.append('No se pudieron consultar las etiquetas adicionales.')
+    if include_lyrics:
+        try:
+            data = get_json('https://lrclib.net/api/get', params={
+                'track_name': track['title'], 'artist_name': track['artist'],
+            })
+            track['lyrics'] = data.get('plainLyrics') or data.get('syncedLyrics') or ''
+            if not track['lyrics']:
+                warnings.append('No se encontraron letras para esta canción.')
+        except (requests.RequestException, ValueError, KeyError):
+            warnings.append('Letras no disponibles para esta canción.')
+    return warnings

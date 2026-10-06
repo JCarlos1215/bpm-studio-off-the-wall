@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#111317" />
+
+    <title>Rekordbox Explorer — your rekordbox USB, in the browser</title>
+    <meta
+      name="description"
+      content="Browse your rekordbox USB library in the browser. Parses export.pdb locally — no uploads, no installs."
+    />
+    <meta name="author" content="Carlos Franzetti" />
+
+    <!-- Icons: SVG for modern browsers, PNG/ICO fallbacks, apple-touch for iOS.
+         All served locally — never reintroduce a remote icon URL. -->
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="%BASE_URL%favicon.ico" sizes="32x32" />
+    <link rel="icon" href="%BASE_URL%icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+    <link rel="manifest" href="%BASE_URL%site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Rekordbox Explorer" />
+    <meta property="og:title" content="Rekordbox Explorer" />
+    <meta
+      property="og:description"
+      content="Browse your rekordbox USB library in the browser. Parses export.pdb locally — no uploads, no installs."
+    />
+    <meta property="og:image" content="%BASE_URL%og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Rekordbox Explorer" />
+    <meta
+      name="twitter:description"
+      content="Browse your rekordbox USB library in the browser. Parses export.pdb locally — no uploads, no installs."
+    />
+    <meta name="twitter:image" content="%BASE_URL%og-image.png" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <noscript>Rekordbox Explorer needs JavaScript — it parses your USB entirely in the browser.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

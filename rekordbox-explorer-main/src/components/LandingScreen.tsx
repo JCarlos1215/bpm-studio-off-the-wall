@@ -1,0 +1,299 @@
+import { AudioLines, Usb, AlertCircle, Loader2, FileUp, CheckCircle, XCircle, Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import type { USBStatus, DriveReport } from '@/types/rekordbox';
+import { isFileSystemAccessSupported } from '@/hooks/useRekordbox';
+import { DonateSection } from '@/components/DonateSection';
+
+interface LandingScreenProps {
+  status: USBStatus;
+  onSelectFolder: () => void;
+  onFullScan: () => void;
+  onReset: () => void;
+  onSelectFile?: () => void;
+  fileInputRef?: React.RefObject<HTMLInputElement>;
+  onFileInput?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+function PlayerRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      {ok ? (
+        <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+      ) : (
+        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+      )}
+      <div className="min-w-0">
+        <p className="font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Will this stick work in the booth?" — the question people actually have.
+ *
+ * Leads with the answer per player generation rather than with which files
+ * exist, because "you have export.pdb but no exportLibrary.db" means nothing
+ * to most people and "this will not show up on older CDJs" means everything.
+ */
+export function CompatibilityInfo({ drive }: { drive: DriveReport }) {
+  const { compatibility, check, playlistComparison } = drive;
+
+  return (
+    <div className="mt-4 space-y-3 rounded-lg border bg-card p-4">
+      <h3 className="flex items-center gap-2 font-medium">
+        <Info className="h-4 w-4" />
+        Player compatibility
+      </h3>
+
+      <p className="text-sm text-foreground">{compatibility.headline}</p>
+
+      <div className="space-y-3 text-sm">
+        <PlayerRow
+          ok={compatibility.olderPlayers === 'yes'}
+          label="Older players"
+          detail="CDJ-2000NXS2, CDJ-3000, XDJ-1000MK2, XDJ-RX2, XDJ-XZ"
+        />
+        <PlayerRow
+          ok={compatibility.newerPlayers === 'yes'}
+          label="Newer players"
+          detail="CDJ-3000X, XDJ-AZ, OPUS-QUAD, OMNIS-DUO, CDJ-3000 fw 3.15+"
+        />
+      </div>
+
+      {compatibility.warnings.map((w) => (
+        <div key={w} className="flex items-start gap-2 rounded border border-warning/30 bg-warning/10 p-2">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+          <p className="text-xs text-muted-foreground">{w}</p>
+        </div>
+      ))}
+
+      {playlistComparison && (
+        <div
+          className={`rounded border p-2 ${
+            playlistComparison.equivalent
+              ? 'border-green-500/30 bg-green-500/10'
+              : 'border-warning/30 bg-warning/10'
+          }`}
+        >
+          <p className="text-xs text-muted-foreground">{playlistComparison.summary}</p>
+          {!playlistComparison.equivalent && (
+            <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+              {playlistComparison.onlyInLegacy.map((n) => (
+                <li key={`l-${n}`}>· “{n}” — older players only</li>
+              ))}
+              {playlistComparison.onlyInOneLibrary.map((n) => (
+                <li key={`o-${n}`}>· “{n}” — newer players only</li>
+              ))}
+              {playlistComparison.differingCounts.map((d) => (
+                <li key={`d-${d.name}`}>
+                  · “{d.name}” — {d.legacyCount} tracks on older, {d.oneLibraryCount} on newer
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-0.5 border-t pt-2 text-xs text-muted-foreground">
+        {check.legacy && <p>Found {check.legacy.path}</p>}
+        {check.oneLibrary && <p>Found {check.oneLibrary.path}</p>}
+      </div>
+    </div>
+  );
+}
+
+export function LandingScreen({ status, onSelectFolder, onFullScan, onReset, onSelectFile, fileInputRef, onFileInput }: LandingScreenProps) {
+  const supportsFileSystemAccess = isFileSystemAccessSupported();
+  const isEmbedded = new URLSearchParams(window.location.search).has('embed');
+
+  return (
+    <main className="landing-shell flex min-h-screen flex-col bg-background px-4 py-5 sm:px-8 sm:py-8">
+      {/* Hidden file input for Safari/iOS fallback */}
+      {fileInputRef && onFileInput && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          // Nudges the iOS Files picker toward the database. It is a hint, not a
+          // guarantee — iOS still lets you pick anything — so the load path
+          // sniffs the actual bytes as well.
+          accept=".pdb,application/octet-stream"
+          onChange={onFileInput}
+          className="hidden"
+        />
+      )}
+      
+      {!isEmbedded && (
+        <header className="mx-auto grid w-full max-w-6xl grid-cols-1 justify-items-center gap-3 border-b border-border/70 pb-5 text-center sm:grid-cols-3 sm:gap-6">
+          <div className="sm:justify-self-center">
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-foreground">BPM Studio</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Rekordbox library tools</p>
+          </div>
+          <div className="flex justify-center">
+            <img
+              src={`${import.meta.env.BASE_URL}off-the-wall-logo.png`}
+              alt="Off The Wall"
+              className="h-12 w-[min(13rem,80vw)] object-cover object-center"
+            />
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <AudioLines className="h-4 w-4 text-primary" />
+            <span>Tools for DJs</span>
+          </div>
+        </header>
+      )}
+
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center py-10 text-center sm:py-14">
+        <div className="mb-6 w-full animate-fade-in">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Off The Wall / USB tools</p>
+          <h1 className="text-balance text-3xl font-semibold text-foreground sm:text-4xl">Rekordbox Explorer</h1>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
+            Explora la biblioteca de Rekordbox de tu USB sin abrir la aplicación completa
+          </p>
+        </div>
+
+      <Card className="mx-auto w-full max-w-xl animate-fade-in border-border/80 bg-card/95 text-center shadow-2xl shadow-black/30">
+        <CardHeader className="text-center">
+          <CardDescription className="text-muted-foreground">
+            Selecciona una unidad USB o una base de datos para explorar tu biblioteca
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
+          {status.type === 'idle' && supportsFileSystemAccess && (
+            <Button 
+              onClick={onSelectFolder} 
+              className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+              size="lg"
+            >
+              <Usb className="h-5 w-5" />
+              Seleccionar USB o carpeta
+            </Button>
+          )}
+
+          {status.type === 'idle' && !supportsFileSystemAccess && onSelectFile && (
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3">
+                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
+                <div className="text-sm text-muted-foreground">
+                  <p className="mb-1">Your browser doesn't support folder selection.</p>
+                  <p>Navigate to your USB in the Files app, find <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">PIONEER/rekordbox/</code> and select <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">export.pdb</code></p>
+                </div>
+              </div>
+              <Button 
+                onClick={onSelectFile} 
+                className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                size="lg"
+              >
+                <FileUp className="h-5 w-5" />
+                Select export.pdb File
+              </Button>
+            </div>
+          )}
+
+          {status.type === 'loading' && (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">Scanning for Rekordbox database...</p>
+            </div>
+          )}
+
+          {status.type === 'partial' && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
+                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
+                <div>
+                  <p className="font-medium text-foreground">Partial Structure Found</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{status.message}</p>
+                </div>
+              </div>
+              
+              {status.drive && <CompatibilityInfo drive={status.drive} />}
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button 
+                  onClick={onFullScan} 
+                  variant="default"
+                  className="w-full flex-1"
+                >
+                  Full Scan
+                </Button>
+                <Button 
+                  onClick={onReset} 
+                  variant="outline"
+                  className="w-full flex-1"
+                >
+                  Choose Another
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {status.type === 'invalid' && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+                <div>
+                  <p className="font-medium text-foreground">Not a Rekordbox USB</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{status.message}</p>
+                </div>
+              </div>
+              <Button 
+                onClick={onReset} 
+                variant="outline"
+                className="w-full"
+              >
+                Choose Another Folder
+              </Button>
+            </div>
+          )}
+
+          {status.type === 'error' && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive" />
+                <div>
+                  <p className="font-medium text-foreground">Error</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{status.message}</p>
+                </div>
+              </div>
+              {/* Show file picker on Safari/unsupported browsers instead of Try Again */}
+              {!supportsFileSystemAccess && onSelectFile ? (
+                <Button 
+                  onClick={onSelectFile} 
+                  className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                  size="lg"
+                >
+                  <FileUp className="h-5 w-5" />
+                  Select export.pdb File
+                </Button>
+              ) : (
+                <Button 
+                  onClick={onReset} 
+                  variant="outline"
+                  className="w-full"
+                >
+                  Try Again
+                </Button>
+              )}
+            </div>
+          )}
+          
+          {/* Also show compatibility info if status is valid (though this component usually unmounts when valid, 
+              but in case we want to show it before transitioning or in a dialog, it's good to have. 
+              However, the app likely switches to the main view immediately. 
+              We might want to add a way to view this info in the main app later.) */}
+
+          <p className="text-center text-xs text-muted-foreground">
+            Busca <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">PIONEER/rekordbox/export.pdb</code>
+          </p>
+
+          <DonateSection />
+        </CardContent>
+      </Card>
+      </div>
+    </main>
+  );
+}

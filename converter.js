@@ -5,7 +5,7 @@ let file=null,busy=false,engine=null,job=0,resultURL=null;
 const size=n=>`${(n/1024/1024).toLocaleString('es-MX',{maximumFractionDigits:2})} MB`;
 function say(text,error=false){$('conversionStatus').textContent=text;$('conversionStatus').classList.toggle('error',error);}
 function clearResult(){if(resultURL)URL.revokeObjectURL(resultURL);resultURL=null;$('downloadResult').hidden=true;$('downloadResult').removeAttribute('href');}
-function updateControls(){for(const id of ['mediaFile','outputFormat','removeFile','showBpm','showDownloader','showRekordbox'])$(id).disabled=busy;$('conversionQuality').disabled=busy||['wav','flac'].includes($('outputFormat').value);$('convertButton').disabled=busy||!file;$('convertButton').textContent=busy?'Convirtiendo…':'Convertir archivo';$('cancelConversion').hidden=!busy;}
+function updateControls(){for(const id of ['mediaFile','outputFormat','removeFile','showBpm','showMp3','showRekordbox','showKeyAnalyzer'])$(id).disabled=busy;$('conversionQuality').disabled=busy||['wav','flac'].includes($('outputFormat').value);$('convertButton').disabled=busy||!file;$('convertButton').textContent=busy?'Convirtiendo…':'Convertir archivo';$('cancelConversion').hidden=!busy;}
 function hint(){ $('formatHint').textContent=formats[$('outputFormat').value].hint;updateControls(); }
 function selectFile(candidate){
  if(busy)return;clearResult();$('conversionProgress').hidden=true;
@@ -63,7 +63,10 @@ $('convertButton').addEventListener('click',convert);$('cancelConversion').addEv
 for(const event of ['dragenter','dragover'])$('fileDrop').addEventListener(event,e=>{e.preventDefault();if(!busy)$('fileDrop').classList.add('dragging');});
 for(const event of ['dragleave','drop'])$('fileDrop').addEventListener(event,e=>{e.preventDefault();$('fileDrop').classList.remove('dragging');});
 $('fileDrop').addEventListener('drop',e=>{if(busy)return;if(e.dataTransfer.files.length!==1){say('Selecciona un solo archivo por conversión.',true);return;}selectFile(e.dataTransfer.files[0]);});
-function switchView(view){if(busy&&view!=='converter')return;if(view!=='bpm')window.dispatchEvent(new Event('studio:converter'));for(const [name,button] of [['bpm','showBpm'],['converter','showConverter'],['downloader','showDownloader'],['rekordbox','showRekordbox']]){const active=view===name;$(name+'View').hidden=!active;$(button).classList.toggle('selected',active);$(button).setAttribute('aria-pressed',String(active));}document.body.classList.toggle('converter-open',view!=='bpm');if(view==='bpm')window.dispatchEvent(new Event('resize'));}
-$('showBpm').addEventListener('click',()=>switchView('bpm'));$('showConverter').addEventListener('click',()=>switchView('converter'));$('showDownloader').addEventListener('click',()=>switchView('downloader'));
-$('showRekordbox').addEventListener('click',()=>switchView('rekordbox'));
+function switchView(view){if(busy&&view!=='converter')return;if(view!=='bpm')window.dispatchEvent(new Event('studio:converter'));for(const [name,button] of [['bpm','showBpm'],['converter','showConverter'],['mp3','showMp3'],['rekordbox','showRekordbox'],['keyAnalyzer','showKeyAnalyzer']]){const active=view===name;$(name+'View').hidden=!active;$(button).classList.toggle('selected',active);$(button).setAttribute('aria-pressed',String(active));}document.body.classList.toggle('converter-open',view!=='bpm');if(view==='bpm')window.dispatchEvent(new Event('resize'));}
+$('showBpm').addEventListener('click',()=>switchView('bpm'));$('showConverter').addEventListener('click',()=>switchView('converter'));$('showMp3').addEventListener('click',()=>switchView('mp3'));$('showRekordbox').addEventListener('click',()=>switchView('rekordbox'));$('showKeyAnalyzer').addEventListener('click',()=>switchView('keyAnalyzer'));
+const mp3Frame=$('mp3Frame');
+window.addEventListener('message',event=>{if(event.source!==mp3Frame.contentWindow||event.origin!=='http://127.0.0.1:8093'||event.data?.type!=='mp3-studio-resize')return;const height=Number(event.data.height);if(Number.isFinite(height))mp3Frame.style.height=`${Math.max(720,Math.min(height,12000))}px`;});
+const keyAnalyzerFrame=$('keyAnalyzerFrame');
+window.addEventListener('message',event=>{if(event.source!==keyAnalyzerFrame.contentWindow||event.origin!==location.origin||event.data?.type!=='key-analyzer-resize')return;const height=Number(event.data.height);if(Number.isFinite(height))keyAnalyzerFrame.style.height=`${Math.max(720,Math.min(height,6000))}px`;});
 window.addEventListener('pagehide',()=>{cancel();clearResult();});hint();

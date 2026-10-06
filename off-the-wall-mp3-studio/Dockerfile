@@ -1,0 +1,11 @@
+FROM python:3.13-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg nodejs ca-certificates && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+RUN useradd --uid 10001 --create-home appuser && mkdir -p /app/data && chown -R appuser:appuser /app
+USER appuser
+ENV HOST=0.0.0.0 PORT=8093 DATA_DIR=/app/data PYTHONUNBUFFERED=1
+EXPOSE 8093
+CMD ["python", "app.py"]
