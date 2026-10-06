@@ -190,11 +190,6 @@ def test_public_access_without_password(tmp_path, monkeypatch):
         application.extensions['jobs'].executor.shutdown(wait=True)
 
 
-def test_spotify_missing_credentials(monkeypatch):
-    monkeypatch.delenv('SPOTIFY_CLIENT_ID',raising=False)
-    monkeypatch.delenv('SPOTIFY_CLIENT_SECRET',raising=False)
-    with pytest.raises(providers.SourceError,match='SPOTIFY_CLIENT_ID'):
-        providers.spotify_resolve('https://open.spotify.com/track/example')
 
 
 def test_restart_marks_interrupted_jobs_failed(tmp_path):

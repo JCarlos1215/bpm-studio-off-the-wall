@@ -1,5 +1,7 @@
 """Equivalent source resolution to AllToMP3 using maintained extractors."""
+import json
 import os
+from html.parser import HTMLParser
 import re
 import time
 from urllib.parse import urlparse
@@ -161,11 +163,81 @@ def spotify_track(item, album=None):
     }
 
 
+
+class _SpotifyEmbedData(HTMLParser):
+    """Read Spotify's public metadata without executing page scripts."""
+    def __init__(self):
+        super().__init__()
+        self.reading = False
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'script' and dict(attrs).get('id') == '__NEXT_DATA__':
+            self.reading = True
+
+    def handle_data(self, data):
+        if self.reading:
+            self.parts.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == 'script':
+            self.reading = False
+
+
+def spotify_public_resolve(kind, identifier):
+    """Resolve only the tracks Spotify exposes in its public embed."""
+    unavailable = ('Spotify no publica canciones accesibles para este enlace. '
+                   'Comprueba que la lista sea pública; las listas privadas o personalizadas '
+                   'pueden requerir acceso de usuario. Prueba una lista pública o un enlace de YouTube.')
+    try:
+        response = requests.get(
+            f'https://open.spotify.com/embed/{kind}/{identifier}',
+            headers=HEADERS, timeout=HTTP_TIMEOUT,
+        )
+        response.raise_for_status()
+        parser = _SpotifyEmbedData()
+        parser.feed(response.text)
+        data = json.loads(''.join(parser.parts))
+        entity = data['props']['pageProps']['state']['data']['entity']
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+        raise SourceError(unavailable) from exc
+    if not isinstance(entity, dict) or entity.get('id') != identifier or entity.get('type') != kind:
+        raise SourceError(unavailable)
+
+    rows = [entity] if kind == 'track' else entity.get('trackList') or []
+    tracks = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        uri = row.get('uri') or ''
+        match = re.fullmatch(r'spotify:track:([A-Za-z0-9]+)', uri)
+        title = row.get('title') or row.get('name')
+        artist = ', '.join(a.get('name', '') for a in row.get('artists', []) if isinstance(a, dict)) or row.get('subtitle') or ''
+        if not match or not title or not artist:
+            continue
+        images = (row.get('visualIdentity') or {}).get('image') or []
+        release = (row.get('releaseDate') or {}).get('isoString') or ''
+        tracks.append({
+            'title': title, 'artist': artist, 'album': entity.get('name', '') if kind == 'album' else '',
+            'genre': '', 'duration': (row.get('duration') or 0) / 1000,
+            'cover': images[0].get('url', '') if images else '',
+            'source_url': 'https://open.spotify.com/track/' + match[1],
+            'source': 'spotify', 'year': release[:4], 'track_number': '',
+        })
+        if len(tracks) >= MAX_ITEMS:
+            break
+    if not tracks:
+        raise SourceError(unavailable)
+    return entity.get('name') or entity.get('title') or 'Spotify', tracks
+
+
 def spotify_resolve(url):
     match = re.search(r'/(track|album|playlist)/([A-Za-z0-9]+)', urlparse(url).path)
     if not match:
         raise SourceError('Usa el enlace completo de una canción, álbum o lista de Spotify.')
     kind, identifier = match.groups()
+    if not (os.getenv('SPOTIFY_CLIENT_ID', '').strip() and os.getenv('SPOTIFY_CLIENT_SECRET', '').strip()):
+        return spotify_public_resolve(kind, identifier)
     headers = {**HEADERS, 'Authorization': 'Bearer ' + spotify_token()}
 
     def fetch(path):

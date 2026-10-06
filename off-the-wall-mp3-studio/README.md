@@ -64,7 +64,9 @@ La migración sustituye las dependencias antiguas de Node/Electron del original 
 
 ## Spotify
 
-Crea una aplicación en Spotify for Developers y configura las credenciales propias en `.env`:
+Los enlaces públicos se consultan sin credenciales mediante los metadatos del reproductor insertable de Spotify. Se importan las canciones que Spotify expone allí, hasta `MAX_PLAYLIST_ITEMS`; el reproductor puede mostrar solo parte de una lista. Las listas privadas, personalizadas o no disponibles en ese reproductor muestran un error de acceso.
+
+Para usar la API de Spotify como primera opción, crea una aplicación en Spotify for Developers y configura las credenciales propias en `.env` (local) o en **Environment** del servicio de Render:
 
 ```dotenv
 SPOTIFY_CLIENT_ID=tu_client_id
