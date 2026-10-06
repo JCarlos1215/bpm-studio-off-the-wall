@@ -6,6 +6,7 @@ if (embedded) document.documentElement.classList.add('embedded');
 const terminal = new Set(['completed', 'partial', 'failed', 'cancelled']);
 const names = { queued:'En cola', resolving:'Leyendo enlace', processing:'En curso', searching:'Buscando audio', downloading:'Descargando', converting:'Convirtiendo', tagging:'Añadiendo etiquetas', completed:'Completada', partial:'Con errores', failed:'Error', cancelled:'Cancelada' };
 let jobs = [], mode = 'link', view = 'convert', filter = 'all', results = [], pendingDelete = null, lastData = '', toastTimer;
+let serverPassword = '';
 let preferences = { tags:true, lyrics:true, bitrate:256 };
 try { preferences = { ...preferences, ...JSON.parse(localStorage.getItem('alltomp3-preferences') || '{}') }; } catch {}
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -19,12 +20,59 @@ function artwork(track) {
 }
 function empty(title, description) { return `<div class="empty-state">${icon('music')}<div><b>${title}</b><p>${description}</p></div></div>`; }
 async function api(path, options = {}) {
-  const response = await fetch(path, { ...options, headers:{ 'Content-Type':'application/json', 'X-Requested-With':'AllToMP3', ...(options.headers || {}) } });
+  const headers = { 'Content-Type':'application/json', 'X-Requested-With':'AllToMP3', ...(options.headers || {}) };
+  if (serverPassword) headers.Authorization = `Basic ${btoa(`bpmstudio:${serverPassword}`)}`;
+  const response = await fetch(path, { ...options, headers });
+  if (response.status === 401) {
+    const login = $('#server-login-dialog');
+    if (!login.open) login.showModal();
+    const error = new Error('La contraseña no es correcta.');
+    error.status = response.status;
+    throw error;
+  }
   let data;
-  try { data = await response.json(); } catch { throw new Error('El servidor no devolvió una respuesta válida.'); }
-  if (!response.ok) throw new Error(data.error || 'No se pudo completar la operación.');
+  try { data = await response.json(); } catch {
+    const error = new Error(response.status >= 500 ? 'El servidor se está iniciando. Inténtalo de nuevo en un minuto.' : 'El servidor no devolvió una respuesta válida.');
+    error.status = response.status;
+    throw error;
+  }
+  if (!response.ok) {
+    const error = new Error(data.error || 'No se pudo completar la operación.');
+    error.status = response.status;
+    throw error;
+  }
   return data;
 }
+$('#server-login-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const password = $('#server-password').value;
+  $('#server-login-submit').disabled = true;
+  $('#server-login-error').hidden = true;
+  serverPassword = password;
+  try {
+    const data = await api('/api/jobs');
+    jobs = data.jobs;
+    lastData = JSON.stringify(jobs);
+    render();
+    $('#server-status').className = 'server-status online';
+    $('#server-status').innerHTML = '<span></span>Servidor conectado';
+    $('#server-password').value = '';
+    $('#server-login-dialog').close();
+    api('/api/status').then(status => {
+      $('#spotify-info').textContent = status.spotify_configured ? `Spotify configurado. Límite de ${status.playlist_limit} canciones por lista.` : `YouTube, SoundCloud y Deezer disponibles. Spotify necesita credenciales en el servidor. Límite de ${status.playlist_limit} canciones por lista.`;
+    });
+  } catch (error) {
+    if (error.message === 'La contraseña no es correcta.') {
+      $('#server-login-error').textContent = error.message;
+      $('#server-login-error').hidden = false;
+    } else {
+      $('#server-login-error').textContent = 'No se pudo conectar con el servidor. Inténtalo de nuevo.';
+      $('#server-login-error').hidden = false;
+    }
+  } finally {
+    $('#server-login-submit').disabled = false;
+  }
+});
 function toast(message, error = false) {
   clearTimeout(toastTimer); $('#toast').textContent = message; $('#toast').classList.toggle('toast-error', error); $('#toast').hidden = false;
   toastTimer = setTimeout(() => { $('#toast').hidden = true; }, error ? 7000 : 4000);
@@ -95,8 +143,9 @@ async function refresh() {
     const serialized = JSON.stringify(jobs);
     if (serialized !== lastData) { lastData = serialized; render(); }
     $('#server-status').className = 'server-status online'; $('#server-status').innerHTML = '<span></span>Servidor conectado';
-  } catch {
-    $('#server-status').className = 'server-status offline'; $('#server-status').innerHTML = '<span></span>Servidor desconectado';
+  } catch (error) {
+    $('#server-status').className = 'server-status offline';
+    $('#server-status').innerHTML = [502,503,504].includes(error.status) ? '<span></span>Servidor despertando; espera un minuto' : '<span></span>Servidor desconectado';
   }
 }
 async function createJob(query, playlist = false) {

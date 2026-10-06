@@ -104,8 +104,8 @@ Para alojamiento remoto usa un servidor con disco persistente y soporte para pro
 El repositorio incluye `render.yaml` para crear el servidor como Blueprint. En Render,
 selecciona **New → Blueprint**, conecta este repositorio y despliega el servicio
 `jcarlos1215-bpm-studio-off-the-wall-mp3`. Render genera una contraseña `APP_PASSWORD`;
-consúltala en las variables de entorno del servicio para iniciar sesión. El nombre de
-usuario de la ventana de acceso puede ser cualquiera.
+consúltala en las variables de entorno del servicio para escribirla en el formulario de
+acceso de MP3 Studio. La contraseña solo se conserva en la pestaña actual.
 
 El iframe de MP3 Studio en GitHub Pages apunta a ese servicio. La contraseña protege las
 conversiones; no la pongas en el repositorio ni en la URL. El servicio gratuito puede
