@@ -1,4 +1,3 @@
-export const LIMIT = 200 * 1024 * 1024;
 export const formats = {
  mp3:{mime:'audio/mpeg',label:'MP3',audio:true,hint:'Extrae la primera pista de audio. MP3: 192 kb/s equilibrada, 320 kb/s alta o 128 kb/s pequeña.'},
  wav:{mime:'audio/wav',label:'WAV',audio:true,hint:'WAV PCM de 16 bits, sin compresión. Conserva la frecuencia de muestreo; el archivo puede crecer mucho.'},

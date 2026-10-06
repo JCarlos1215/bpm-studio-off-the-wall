@@ -1,4 +1,4 @@
-import {formats,LIMIT,buildArgs} from './conversion-profiles.js';
+import {formats,buildArgs} from './conversion-profiles.js';
 import {inspectMedia} from './media-inspect.js';
 const $=id=>document.getElementById(id);
 let file=null,busy=false,engine=null,job=0,resultURL=null;
@@ -10,7 +10,7 @@ function hint(){ $('formatHint').textContent=formats[$('outputFormat').value].hi
 function selectFile(candidate){
  if(busy)return;clearResult();$('conversionProgress').hidden=true;
  if(!candidate){file=null;$('mediaFile').value='';$('chosenFile').hidden=true;say('Selecciona un archivo para comenzar. No se sube a ningún servidor.');updateControls();return;}
- if(candidate.size===0||candidate.size>LIMIT){selectFile(null);say(candidate.size===0?'Este archivo está vacío. Selecciona otro.':'El archivo supera el límite de 200 MB. Selecciona uno más pequeño.',true);return;}
+ if(candidate.size===0){selectFile(null);say('Este archivo está vacío. Selecciona otro.',true);return;}
  file=candidate;$('chosenFile').hidden=false;$('chosenName').textContent=file.name;$('chosenSize').textContent=size(file.size);say('Archivo listo. Elige el formato de salida y pulsa Convertir archivo.');updateControls();
 }
 function progress(text,value){$('conversionProgress').hidden=false;$('progressLabel').textContent=text;if(value===undefined)$('convertProgress').removeAttribute('value');else $('convertProgress').value=value;}
