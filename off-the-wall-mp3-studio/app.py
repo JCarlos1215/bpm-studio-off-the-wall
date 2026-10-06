@@ -29,7 +29,7 @@ def create_app(data_dir=None):
             auth = request.authorization
             if not auth or not hmac.compare_digest(auth.password or '', password):
                 return Response('Acceso protegido. Usa cualquier nombre de usuario y la contraseña del servidor.', 401,
-                                {'WWW-Authenticate': 'Basic realm="AllToMP3 Web", charset="UTF-8"'})
+                                {'WWW-Authenticate': 'Basic realm="Download Manager", charset="UTF-8"'})
         if request.method in ('POST', 'PATCH', 'DELETE'):
             origin = request.headers.get('Origin')
             if origin and urlparse(origin).netloc != request.host:
@@ -148,5 +148,5 @@ if __name__ == '__main__':
     public_access = os.getenv('ALLOW_PUBLIC_ACCESS', '').lower() in {'1', 'true', 'yes'}
     if host not in ('127.0.0.1', 'localhost', '::1') and not os.getenv('APP_PASSWORD') and not public_access:
         raise SystemExit('Configura APP_PASSWORD o ALLOW_PUBLIC_ACCESS=true para permitir acceso fuera de localhost.')
-    print(f'AllToMP3 Web: http://{host}:{port}', flush=True)
+    print(f'Download Manager: http://{host}:{port}', flush=True)
     serve(create_app(), host=host, port=port, threads=8)

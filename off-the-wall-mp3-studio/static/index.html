@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#030303">
-  <title>Off The Wall — MP3 Studio</title>
+  <title>Off The Wall — Download Manager</title>
   <meta name="description" content="Busca, convierte y organiza tu música en MP3 con etiquetas, portadas y letras.">
   <link rel="icon" href="/static/icon.svg?v=otw-1" type="image/svg+xml">
   <link rel="stylesheet" href="/static/style.css?v=otw-1">
@@ -14,7 +14,7 @@
   <div class="shell">
     <header class="studio-header">
       <a class="brand" href="/" aria-label="Off The Wall, inicio"><img src="/static/logo.png" alt="Off The Wall" width="300" height="225"></a>
-      <div class="identity">BPM STUDIO<span>CONVERTIDOR DE MÚSICA</span></div>
+      <div class="identity">DOWNLOAD MANAGER<span>GESTOR DE DESCARGAS</span></div>
       <div class="privacy"><span class="lock">◈</span> HERRAMIENTAS PARA DJ</div>
     </header>
     <nav class="studio-nav" aria-label="Navegación principal">
@@ -58,10 +58,10 @@
       </section>
       <section id="library-view" hidden><div class="page-heading"><div class="eyebrow">OFF THE WALL / MUSIC LIBRARY</div><h1>Mi biblioteca</h1><p>Todo lo que has convertido, listo para escuchar.</p></div><div class="library-tools"><input id="library-filter" type="search" placeholder="Filtrar por canción, artista o álbum" aria-label="Filtrar biblioteca"><span id="library-summary"></span></div><div id="library"></div></section>
       <section id="history-view" hidden><div class="page-heading"><div class="eyebrow">OFF THE WALL / SESSION HISTORY</div><h1>Historial</h1><p>Tus conversiones, sus detalles y un nuevo intento cuando lo necesites.</p></div><div class="history-filters" aria-label="Filtrar historial"><button class="selected" data-filter="all">Todas</button><button data-filter="completed">Completadas</button><button data-filter="active">En curso</button><button data-filter="failed">Con errores</button></div><div id="history"></div></section>
-      <footer><span>OFF THE WALL · MP3 STUDIO <span class="footer-separator">/</span> <a href="https://github.com/AllToMP3" target="_blank" rel="noopener">Motor inspirado en AllToMP3 ↗</a></span><span>Convierte contenido propio o con permiso de descarga.</span></footer>
+      <footer><span>OFF THE WALL · DOWNLOAD MANAGER <span class="footer-separator">/</span> <a href="https://github.com/AllToMP3" target="_blank" rel="noopener">Motor inspirado en AllToMP3 ↗</a></span><span>Convierte contenido propio o con permiso de descarga.</span></footer>
     </main>
   </div>
-  <dialog id="server-login-dialog" aria-labelledby="server-login-title"><form id="server-login-form"><div class="dialog-heading"><h2 id="server-login-title">Conectar con MP3 Studio</h2></div><p>Introduce la contraseña del servidor Render. Si lo dejas activado, se recordará en este navegador para futuras visitas.</p><label for="server-password">Contraseña</label><input id="server-password" type="password" autocomplete="current-password" required><label class="toggle-row"><span><b>Recordar en este dispositivo</b><small>La contraseña se guarda en el navegador que estás usando.</small></span><input id="remember-server-password" type="checkbox" checked></label><div id="server-login-error" class="form-error" role="alert" hidden></div><button id="server-login-submit" class="primary dialog-save" type="submit">Conectar</button></form></dialog>
+  <dialog id="server-login-dialog" aria-labelledby="server-login-title"><form id="server-login-form"><div class="dialog-heading"><h2 id="server-login-title">Conectar con Download Manager</h2></div><p>Introduce la contraseña del servidor Render. Si lo dejas activado, se recordará en este navegador para futuras visitas.</p><label for="server-password">Contraseña</label><input id="server-password" type="password" autocomplete="current-password" required><label class="toggle-row"><span><b>Recordar en este dispositivo</b><small>La contraseña se guarda en el navegador que estás usando.</small></span><input id="remember-server-password" type="checkbox" checked></label><div id="server-login-error" class="form-error" role="alert" hidden></div><button id="server-login-submit" class="primary dialog-save" type="submit">Conectar</button></form></dialog>
   <dialog id="settings-dialog"><div class="dialog-heading"><h2>Preferencias</h2><button class="icon-button" data-close="settings-dialog" aria-label="Cerrar">×</button></div><p>Se aplican a las próximas conversiones.</p><label class="toggle-row"><span><b>Etiquetas y portada</b><small>Añade título, artista, álbum, género y carátula.</small></span><input id="tags-option" type="checkbox" checked></label><label class="toggle-row"><span><b>Incluir letras</b><small>Se añaden al MP3 cuando están disponibles.</small></span><input id="lyrics-option" type="checkbox" checked></label><div class="info-box" id="spotify-info">Comprobando la conexión con Spotify…</div><div class="info-box">Spotify y Deezer proporcionan los datos de las canciones. El audio se busca en YouTube y puede ser una versión diferente.</div><button class="primary dialog-save" data-close="settings-dialog">Guardar preferencias</button></dialog>
   <dialog id="track-dialog"><div class="dialog-heading"><h2>Detalles de la canción</h2><button class="icon-button" data-close="track-dialog" aria-label="Cerrar">×</button></div><div id="track-detail"></div></dialog>
   <dialog id="confirm-dialog"><div class="dialog-heading"><h2>Eliminar conversión</h2><button class="icon-button" data-close="confirm-dialog" aria-label="Cerrar">×</button></div><p>Se eliminarán esta entrada del historial y sus archivos MP3 del servidor.</p><div class="confirm-actions"><button class="secondary" data-close="confirm-dialog">Conservar</button><button class="primary danger" id="confirm-delete">Eliminar</button></div></dialog>

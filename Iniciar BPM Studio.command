@@ -33,7 +33,7 @@ for port_to_check in "$port" "$mp3_port"; do
 done
 
 if [[ ! -x "$mp3_python" ]]; then
-  echo "Falta el entorno local de Python de MP3 Studio: $mp3_dir/.venv"
+  echo "Falta el entorno local de Python de Download Manager: $mp3_dir/.venv"
   echo "Inicia off-the-wall-mp3-studio/Iniciar.command una vez con conexión para instalarlo."
   read -r "?Pulsa Enter para cerrar esta ventana. "
   exit 1
@@ -60,7 +60,7 @@ for attempt in {1..40}; do
 done
 
 if [[ "$mp3_ready" != 1 ]]; then
-  echo "No se pudo iniciar MP3 Studio en $mp3_url."
+  echo "No se pudo iniciar Download Manager en $mp3_url."
   echo "Revisa los mensajes anteriores de esta ventana para ver el error del servidor."
   read -r "?Pulsa Enter para cerrar esta ventana. "
   exit 1
@@ -88,7 +88,7 @@ if [[ "$main_ready" != 1 ]]; then
 fi
 
 open "$url"
-echo "BPM Studio, Rekordbox Explorer y la interfaz de MP3 Studio se sirven localmente."
-echo "La interfaz está en $url; MP3 Studio está en $mp3_url."
+echo "BPM Studio, Rekordbox Explorer y la interfaz de Download Manager se sirven localmente."
+echo "La interfaz está en $url; Download Manager está en $mp3_url."
 echo "Mantén esta ventana abierta. Ciérrala para detener los servidores locales."
 wait "$main_pid"

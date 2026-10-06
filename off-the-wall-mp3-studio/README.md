@@ -1,17 +1,17 @@
-# AllToMP3 Web
+# Download Manager
 
 Aplicación web en español basada en los flujos de [AllToMP3](https://github.com/AllToMP3). Interfaz adaptable a móvil y escritorio, servidor Python y conversión real con FFmpeg. No contiene conversiones simuladas.
 
-Diseño adaptado de [BPM Studio Off The Wall](https://github.com/JCarlos1215/bpm-studio-off-the-wall): logo original centrado, fondo negro, acentos azules, paneles de cristal y navegación horizontal. Incluye un resumen de conversiones, canciones listas y errores. En el navegador se identifica como **Off The Wall — MP3 Studio**.
+Diseño adaptado de [BPM Studio Off The Wall](https://github.com/JCarlos1215/bpm-studio-off-the-wall): logo original centrado, fondo negro, acentos azules, paneles de cristal y navegación horizontal. Incluye un resumen de conversiones, canciones listas y errores. En el navegador se identifica como **Off The Wall — Download Manager**.
 
 ## Inicio rápido en Mac
 
-La carpeta contiene el servidor y todos los archivos de la interfaz. Para usar MP3 Studio
+La carpeta contiene el servidor y todos los archivos de la interfaz. Para usar Download Manager
 dentro de la página principal del proyecto, inicia `../Iniciar BPM Studio.command`: ese
 iniciador levanta ambos servicios en `127.0.0.1` y muestra este proyecto en el iframe sin
 cargar la interfaz desde una web externa.
 
-Para iniciar únicamente MP3 Studio, abre `Iniciar.command` o ejecuta:
+Para iniciar únicamente Download Manager, abre `Iniciar.command` o ejecuta:
 
 ```sh
 cd /Users/otw/alltomp3-web
@@ -107,7 +107,7 @@ selecciona **New → Blueprint**, conecta este repositorio y despliega el servic
 dispositivo, el Blueprint activa `ALLOW_PUBLIC_ACCESS`; no se distribuye ni almacena una
 contraseña de acceso.
 
-El iframe de MP3 Studio en GitHub Pages apunta a ese servicio. **Cualquier persona con el
+El iframe de Download Manager en GitHub Pages apunta a ese servicio. **Cualquier persona con el
 enlace del servicio podrá ver el historial y archivos disponibles, iniciar conversiones y
 eliminar trabajos.** No uses esta configuración para archivos privados. El servicio
 gratuito puede dormirse tras 15 minutos sin tráfico y tardar cerca de un minuto en despertar. Su sistema
