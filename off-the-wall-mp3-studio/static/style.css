@@ -23,3 +23,5 @@ dialog{width:520px;max-width:calc(100% - 32px);padding:30px;color:var(--text);ba
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 @media(prefers-reduced-transparency:reduce){.converter-card,.job-card,.library-track,.search-row,dialog,.download-stats article,.server-status{backdrop-filter:none;-webkit-backdrop-filter:none;background:#0b0c0e}dialog::backdrop{backdrop-filter:none;-webkit-backdrop-filter:none;background:#000e}}
 .embedded body{background:transparent;background-image:none;background-attachment:initial}.embedded .shell{max-width:none;margin:0;padding:0}.embedded .studio-header,.embedded .topbar,.embedded main>footer{display:none}.embedded .studio-nav{margin-top:4px}
+.download-stats article{background:linear-gradient(135deg,#1c2f4755,#04070c88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.converter-card,.job-card,.library-track,.search-row,dialog{background:linear-gradient(135deg,#c4dfff12,#0a0b0d88 42%,#05060799);backdrop-filter:blur(12px) saturate(135%);-webkit-backdrop-filter:blur(12px) saturate(135%)}

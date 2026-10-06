@@ -6,20 +6,31 @@
   height:100%;
   object-fit:cover;
   object-position:center;
-  opacity:.3;
+  opacity:.62;
   pointer-events:none;
 }
 body::before{
   position:fixed;
   z-index:1;
   inset:0;
-  background:rgba(0,0,0,.58);
+  background:rgba(0,0,0,.32);
   content:"";
   pointer-events:none;
 }
 .shell{
   position:relative;
   z-index:2;
+}
+.console,.metrics,.converter-panel{
+  background:linear-gradient(135deg,rgba(196,223,255,.08),rgba(10,11,13,.58) 42%,rgba(5,6,7,.68));
+  backdrop-filter:blur(12px) saturate(130%);
+  -webkit-backdrop-filter:blur(12px) saturate(130%);
+}
+.tempo-panel{
+  background:linear-gradient(135deg,rgba(16,44,81,.76),rgba(11,22,40,.72) 58%,rgba(16,26,43,.76));
+}
+.studio-nav button.selected{
+  background:linear-gradient(135deg,#65b6ff22,#090a0c99);
 }
 @media(max-width:700px){
   .studio-nav{grid-template-columns:repeat(2,minmax(0,1fr))}
