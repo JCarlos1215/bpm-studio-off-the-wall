@@ -22,6 +22,13 @@
 | Rekordbox Explorer | React, Vite y TypeScript; lectura local de la USB |
 | Ejecución | Frontend estático y servidor local para MP3 Studio |
 
+## 🌐 Versión web
+
+La versión estática está publicada en [GitHub Pages](https://jcarlos1215.github.io/bpm-studio-off-the-wall/).
+El analizador BPM, el convertidor, Rekordbox Explorer y el analizador DJ funcionan en el
+navegador. MP3 Studio requiere un servidor Python y solo está disponible al iniciar la
+versión local como se indica abajo.
+
 ## 🚀 Puesta en marcha local
 
 ```bash
