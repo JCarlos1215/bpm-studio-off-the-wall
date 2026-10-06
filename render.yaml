@@ -11,8 +11,8 @@ services:
         value: 0.0.0.0
       - key: DATA_DIR
         value: /tmp/data
-      - key: APP_PASSWORD
-        generateValue: true
+      - key: ALLOW_PUBLIC_ACCESS
+        value: "true"
       - key: MAX_PLAYLIST_ITEMS
         value: 20
       - key: MAX_CONCURRENT_JOBS

@@ -17,14 +17,15 @@ import providers
 def create_app(data_dir=None):
     app = Flask(__name__, static_folder='static')
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024
-    app.config['TRUSTED_HOSTS'] = ['localhost', '127.0.0.1', '[::1]'] if not os.getenv('APP_PASSWORD') else None
+    public_access = os.getenv('ALLOW_PUBLIC_ACCESS', '').lower() in {'1', 'true', 'yes'}
+    app.config['TRUSTED_HOSTS'] = ['localhost', '127.0.0.1', '[::1]'] if not os.getenv('APP_PASSWORD') and not public_access else None
     store = JobStore(data_dir or os.getenv('DATA_DIR') or ROOT / 'data')
     app.extensions['jobs'] = store
 
     @app.before_request
     def protect():
         password = os.getenv('APP_PASSWORD', '')
-        if password and request.path.startswith('/api/') and request.path != '/api/status':
+        if password and not public_access and request.path.startswith('/api/') and request.path != '/api/status':
             auth = request.authorization
             if not auth or not hmac.compare_digest(auth.password or '', password):
                 return Response('Acceso protegido. Usa cualquier nombre de usuario y la contraseña del servidor.', 401,
@@ -144,7 +145,8 @@ if __name__ == '__main__':
     from waitress import serve
     host = os.getenv('HOST', '127.0.0.1')
     port = int(os.getenv('PORT', '8093'))
-    if host not in ('127.0.0.1', 'localhost', '::1') and not os.getenv('APP_PASSWORD'):
-        raise SystemExit('Configura APP_PASSWORD en .env para permitir acceso fuera de localhost.')
+    public_access = os.getenv('ALLOW_PUBLIC_ACCESS', '').lower() in {'1', 'true', 'yes'}
+    if host not in ('127.0.0.1', 'localhost', '::1') and not os.getenv('APP_PASSWORD') and not public_access:
+        raise SystemExit('Configura APP_PASSWORD o ALLOW_PUBLIC_ACCESS=true para permitir acceso fuera de localhost.')
     print(f'AllToMP3 Web: http://{host}:{port}', flush=True)
     serve(create_app(), host=host, port=port, threads=8)

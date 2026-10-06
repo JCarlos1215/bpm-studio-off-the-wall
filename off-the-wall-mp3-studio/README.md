@@ -97,22 +97,20 @@ docker compose up --build -d
 
 Abre `http://localhost:8093`. Usa cualquier nombre de usuario y la contraseña de `APP_PASSWORD`. Docker conserva SQLite y MP3 en el volumen `alltomp3-data`.
 
-Para alojamiento remoto usa un servidor con disco persistente y soporte para procesos FFmpeg, por ejemplo una VM o un servicio de contenedores. Pon HTTPS delante mediante un proxy inverso y configura `APP_PASSWORD`. Ejecuta **una instancia** del servidor para esta implementación de la cola. No se debe ejecutar con múltiples procesos compartiendo SQLite: los trabajadores están en memoria.
+Para alojamiento remoto usa un servidor con disco persistente y soporte para procesos FFmpeg, por ejemplo una VM o un servicio de contenedores. Pon HTTPS delante mediante un proxy inverso y configura `APP_PASSWORD`. Para hacer la instancia pública sin contraseña, establece explícitamente `ALLOW_PUBLIC_ACCESS=true`; cualquier persona que conozca la dirección podrá consultar el historial, descargar/eliminar archivos y crear conversiones, lo que puede agotar los recursos del servidor. Ejecuta **una instancia** del servidor para esta implementación de la cola. No se debe ejecutar con múltiples procesos compartiendo SQLite: los trabajadores están en memoria.
 
 ### Render gratuito
 
 El repositorio incluye `render.yaml` para crear el servidor como Blueprint. En Render,
 selecciona **New → Blueprint**, conecta este repositorio y despliega el servicio
-`jcarlos1215-bpm-studio-off-the-wall-mp3`. Render genera una contraseña `APP_PASSWORD`;
-consúltala en las variables de entorno del servicio para escribirla en el formulario de
-acceso de MP3 Studio. La opción **Recordar en este dispositivo** guarda la contraseña en
-el almacenamiento local del navegador y permite conectarse automáticamente en próximas
-visitas; desmárcala para no guardarla. Cualquier persona que use ese mismo perfil del
-navegador podrá acceder a MP3 Studio mientras la contraseña esté guardada.
+`jcarlos1215-bpm-studio-off-the-wall-mp3`. Para que no solicite contraseña en ningún
+dispositivo, el Blueprint activa `ALLOW_PUBLIC_ACCESS`; no se distribuye ni almacena una
+contraseña de acceso.
 
-El iframe de MP3 Studio en GitHub Pages apunta a ese servicio. La contraseña protege las
-conversiones; no la pongas en el repositorio ni en la URL. El servicio gratuito puede
-dormirse tras 15 minutos sin tráfico y tardar cerca de un minuto en despertar. Su sistema
+El iframe de MP3 Studio en GitHub Pages apunta a ese servicio. **Cualquier persona con el
+enlace del servicio podrá ver el historial y archivos disponibles, iniciar conversiones y
+eliminar trabajos.** No uses esta configuración para archivos privados. El servicio
+gratuito puede dormirse tras 15 minutos sin tráfico y tardar cerca de un minuto en despertar. Su sistema
 de archivos es temporal: historial, MP3 y ZIP se pierden al reiniciar, dormir o volver a
 desplegar el servicio. El nivel gratuito tiene recursos limitados; las listas se limitan a
 20 canciones y a una conversión simultánea para reducir la carga. Descarga tus archivos

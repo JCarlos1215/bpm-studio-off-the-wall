@@ -161,6 +161,7 @@ def test_cancel_during_resolution(app, monkeypatch):
 
 
 def test_password(app, monkeypatch):
+    monkeypatch.delenv('ALLOW_PUBLIC_ACCESS', raising=False)
     monkeypatch.setenv('APP_PASSWORD','test-password')
     client = app.test_client()
     assert client.get('/').status_code == 200
@@ -172,6 +173,21 @@ def test_password(app, monkeypatch):
     assert client.get('/api/jobs',headers={'Authorization':'Basic ' + wrong_auth}).status_code == 401
     auth = base64.b64encode(b'user:test-password').decode()
     assert client.get('/api/jobs',headers={'Authorization':'Basic ' + auth}).status_code == 200
+
+
+def test_public_access_without_password(tmp_path, monkeypatch):
+    monkeypatch.setenv('APP_PASSWORD', 'test-password')
+    monkeypatch.setenv('ALLOW_PUBLIC_ACCESS', 'true')
+    application = create_app(tmp_path)
+    application.config['TESTING'] = True
+    try:
+        client = application.test_client()
+        assert client.get('/api/jobs').status_code == 200
+        response = client.post('/api/jobs', headers=HEADERS, json={})
+        assert response.status_code == 400
+        assert response.json['error'] == 'Introduce un enlace o una búsqueda válida.'
+    finally:
+        application.extensions['jobs'].executor.shutdown(wait=True)
 
 
 def test_spotify_missing_credentials(monkeypatch):
