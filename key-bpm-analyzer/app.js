@@ -1,5 +1,9 @@
 import { analyzeAudioBuffer, formatTime } from './analysis.js';
 
+if (new URLSearchParams(window.location.search).has('embed')) {
+  document.documentElement.classList.add('embedded');
+}
+
 const fileInput = document.querySelector('#audio-file');
 const fileLabel = document.querySelector('#file-label');
 const audioPlayer = document.querySelector('#audio-player');

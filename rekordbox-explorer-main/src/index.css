@@ -332,3 +332,24 @@
 .player-range:disabled::-moz-range-thumb {
   opacity: 0;
 }
+
+html.embedded,
+html.embedded body,
+html.embedded #root {
+  background: transparent !important;
+}
+
+html.embedded {
+  color-scheme: dark;
+}
+
+.embedded .landing-shell,
+.embedded .bg-background {
+  background-color: transparent !important;
+}
+
+.embedded [class*="bg-card"] {
+  background-color: hsl(var(--card) / 0.64);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
