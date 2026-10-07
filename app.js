@@ -1,4 +1,4 @@
-import {TempoTracker} from './tempo.js';
+import {TempoTracker} from './tempo.js?v=tempo-20261007-2';
 const $=id=>document.getElementById(id);
 const tracker=new TempoTracker();
 let context,stream,source,analyser,processor,frame=0,running=false,busy=false,view='spectrum',sessionPeak=0,seconds=0,lastRms=0,beat=0,previousRms=0,lastBeat=0,generation=0;
@@ -21,7 +21,7 @@ function showTempo(result){
 function clearReadings(){tracker.reset();sessionPeak=0;seconds=0;lastRms=0;previousRms=0;beat=0;lastBeat=0;$('peak').textContent='−∞';$('rms').textContent='0.000';$('inputDb').textContent='−∞';$('frequency').textContent='—';$('duration').textContent='00:00';$('levelFill').style.width='0%';$('clipLabel').textContent='Máximo desde el inicio';$('clipLabel').style.color='';showTempo(null);document.querySelectorAll('.beat-row span').forEach(x=>x.classList.remove('on'));if(!running){$('stability').textContent='Sin análisis';$('tempoHint').textContent='Activa el micrófono para encontrar el tempo.';}controls();}
 function receive(batch){
   if(!running||trackMuted)return;
-  for(const sample of batch){seconds+=Math.round(context.sampleRate/100)/context.sampleRate;sessionPeak=Math.max(sessionPeak,sample.peak);const result=tracker.push(sample.beatRms ?? sample.rms,Number($('sensitivity').value));if(result!==undefined)showTempo(result);}
+  for(const sample of batch){seconds+=Math.round(context.sampleRate/100)/context.sampleRate;sessionPeak=Math.max(sessionPeak,sample.peak);const result=tracker.push(sample.beatRms ?? sample.rms,Number($('sensitivity').value),sample.rms>10**((-45-Number($('sensitivity').value)*.3)/20)?sample.spectralFlux:0);if(result!==undefined)showTempo(result);}
   lastRms=Math.sqrt(batch.reduce((sum,s)=>sum+s.rms*s.rms,0)/batch.length);
   $('rms').textContent=lastRms.toFixed(3);$('inputDb').textContent=dbText(db(lastRms));$('peak').textContent=dbText(db(sessionPeak));$('clipLabel').textContent=sessionPeak>=.99?'Saturación detectada · baja la entrada':'Máximo desde el inicio';$('clipLabel').style.color=sessionPeak>=.99?'#ffad96':'';
   $('levelFill').style.width=`${Math.min(100,Math.max(0,(db(lastRms)+60)/60*100))}%`;
@@ -43,7 +43,7 @@ async function start(){
     if(id!==generation){stream.getTracks().forEach(t=>t.stop());return;}
     await resume;
     if(!context.audioWorklet)throw new Error('WORKLET');
-    await context.audioWorklet.addModule('./audio-processor.js');
+    await context.audioWorklet.addModule('./audio-processor.js?v=tempo-20261007-2');
     source=context.createMediaStreamSource(stream);analyser=context.createAnalyser();analyser.fftSize=8192;analyser.smoothingTimeConstant=.65;analyser.minDecibels=-100;analyser.maxDecibels=-10;
     processor=new AudioWorkletNode(context,'signal-processor',{channelCount:1,channelCountMode:'explicit',numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
     source.connect(analyser);source.connect(processor);processor.connect(context.destination);processor.port.onmessage=e=>receive(e.data);

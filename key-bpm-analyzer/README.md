@@ -32,7 +32,14 @@ no es compatible, muestra un mensaje con alternativas (MP3, WAV o M4A sin protec
 Ejecuta `node tests/audio-analysis.mjs` desde la raíz. Las pruebas utilizan pulsos
 de tempo conocido con subdivisiones agudas, silencio, tonos constantes y estéreo
 con fase opuesta. Ambos detectores comparten el estimador de periodicidad, de
-60 a 200 BPM, con ventanas de hasta 16 segundos y énfasis en el pulso grave.
-Los archivos combinan tres ventanas distribuidas en la pista. Las pruebas sintéticas
+60 a 200 BPM, con ventanas de hasta 16 segundos. El análisis de archivos detecta ataques por
+cambio espectral y combina hasta 16 ventanas distribuidas en la pista. El detector
+en vivo contrasta ataques espectrales y graves, confirma los cambios de tempo y
+deja la lectura en espera si no hay evidencia suficiente. Las pruebas sintéticas
 no garantizan precisión en todas las canciones: síncopas, cambios de tempo y ritmos
 sin pulso grave pueden producir ambigüedad, incluido medio o doble tempo.
+
+Para comprobar una canción de referencia sin incluirla en el repositorio, conviértela
+localmente a PCM float32 mono de 44,1 kHz con FFmpeg y ejecuta:
+`node tests/song-regression.mjs archivo.f32 bpm-esperados`. La prueba comprueba
+el BPM global y recorre la canción completa por el procesador del micrófono.

@@ -1,4 +1,6 @@
-import { estimateBeat } from '../beat-analysis.js';
+import { fft } from '../fft.js?v=tempo-20261007-2';
+import { SpectralOnset } from '../spectral-onset.js?v=tempo-20261007-2';
+import { estimateBeat } from '../beat-analysis.js?v=tempo-20261007-2';
 const SAMPLE_RATE = 11025;
 const ENVELOPE_RATE = 100;
 const FFT_SIZE = 8192;
@@ -29,31 +31,26 @@ function downsample(buffer) {
   return mono;
 }
 
-function getEnvelope(buffer) {
+function getEnvelope(buffer, samples) {
   const channels = Array.from({length: buffer.numberOfChannels}, (_, i) => buffer.getChannelData(i));
   const frames = Math.ceil(buffer.duration * ENVELOPE_RATE);
   const rms = new Float32Array(frames);
   const onset = new Float32Array(frames);
-  const low = new Float64Array(channels.length);
-  const alpha = 1 - Math.exp(-2 * Math.PI * 180 / buffer.sampleRate);
-  let previous = 0;
+  const detector = new SpectralOnset(SAMPLE_RATE);
+  for (const sample of samples) detector.push(sample);
+  onset.set(detector.values.slice(0, frames));
   for (let frame = 0; frame < frames; frame++) {
     const start = Math.round(frame * buffer.sampleRate / ENVELOPE_RATE);
     const end = Math.min(buffer.length, Math.round((frame + 1) * buffer.sampleRate / ENVELOPE_RATE));
-    let sum = 0, bass = 0;
+    let sum = 0;
     for (let c = 0; c < channels.length; c++) {
       for (let i = start; i < end; i++) {
         const value = channels[c][i];
         sum += value * value;
-        low[c] += alpha * (value - low[c]);
-        bass += low[c] * low[c];
       }
     }
     const count = Math.max(1, (end - start) * channels.length);
     rms[frame] = Math.sqrt(sum / count);
-    const energy = Math.log1p(Math.sqrt(bass / count) * 100);
-    onset[frame] = Math.max(0, energy - previous);
-    previous = energy;
   }
   return {rms, onset};
 }
@@ -61,53 +58,23 @@ function getEnvelope(buffer) {
 function estimateTempo(onset) {
   const estimates = [];
   const length = Math.min(onset.length, 1600);
-  for (const fraction of [0, .5, 1]) {
-    const start = Math.floor((onset.length - length) * fraction);
+  const windows = Math.max(1, Math.min(16, Math.ceil(onset.length / 800)));
+  for (let index = 0; index < windows; index++) {
+    const start = Math.floor((onset.length - length) * index / Math.max(1, windows - 1));
     const result = estimateBeat(onset.subarray(start, start + length));
     if (result) estimates.push(result);
   }
   if (!estimates.length) return {bpm: null, confidence: 'sin pulso fiable'};
-  estimates.sort((a, b) => b.confidence - a.confidence);
-  const best = estimates[0];
-  const agree = estimates.filter(e => Math.abs(e.bpm - best.bpm) < 2);
+  const clusters = estimates.map(center => {
+    const members = estimates.filter(e => Math.abs(e.bpm - center.bpm) < 2);
+    return {members, score: members.reduce((total, e) => total + e.confidence, 0)};
+  }).sort((a, b) => b.score - a.score);
+  const agree = clusters[0].members;
+  const fraction = agree.length / windows;
+  const confidence = mean(agree.map(e => e.confidence));
+  if (fraction < .4) return {bpm: null, confidence: 'tempo variable o ambiguo'};
   return {bpm: Math.round(mean(agree.map(e => e.bpm)) * 10) / 10,
-    confidence: best.confidence >= 75 && agree.length >= 2 ? 'alta' : best.confidence >= 50 ? 'media' : 'baja'};
-}
-
-function fft(real, imag) {
-  const length = real.length;
-  for (let i = 1, j = 0; i < length; i += 1) {
-    let bit = length >> 1;
-    for (; j & bit; bit >>= 1) j ^= bit;
-    j ^= bit;
-    if (i < j) {
-      [real[i], real[j]] = [real[j], real[i]];
-      [imag[i], imag[j]] = [imag[j], imag[i]];
-    }
-  }
-  for (let size = 2; size <= length; size <<= 1) {
-    const angle = -2 * Math.PI / size;
-    const stepReal = Math.cos(angle);
-    const stepImag = Math.sin(angle);
-    for (let start = 0; start < length; start += size) {
-      let weightReal = 1;
-      let weightImag = 0;
-      const half = size >> 1;
-      for (let offset = 0; offset < half; offset += 1) {
-        const even = start + offset;
-        const odd = even + half;
-        const oddReal = real[odd] * weightReal - imag[odd] * weightImag;
-        const oddImag = real[odd] * weightImag + imag[odd] * weightReal;
-        real[odd] = real[even] - oddReal;
-        imag[odd] = imag[even] - oddImag;
-        real[even] += oddReal;
-        imag[even] += oddImag;
-        const nextReal = weightReal * stepReal - weightImag * stepImag;
-        weightImag = weightReal * stepImag + weightImag * stepReal;
-        weightReal = nextReal;
-      }
-    }
-  }
+    confidence: fraction >= .75 && confidence >= 70 ? 'alta' : fraction >= .5 && confidence >= 45 ? 'media' : 'baja'};
 }
 
 function correlate(left, right) {
@@ -235,7 +202,7 @@ export function analyzeAudioBuffer(buffer, onProgress) {
   }
   const samples = downsample(buffer);
   onProgress?.(5);
-  const { rms, onset } = getEnvelope(buffer);
+  const { rms, onset } = getEnvelope(buffer, samples);
   const tempo = estimateTempo(onset);
   const key = estimateKey(samples, onProgress);
   onProgress?.(90);

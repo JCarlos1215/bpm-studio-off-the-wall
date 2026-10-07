@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {SpectralOnset} from '../spectral-onset.js';
 import {analyzeAudioBuffer} from '../key-bpm-analyzer/analysis.js';
 import {TempoTracker} from '../tempo.js';
 let Processor;
 const sr = 44100;
-vm.runInNewContext(readFileSync(new URL('../audio-processor.js', import.meta.url), 'utf8'), {
- sampleRate: sr, AudioWorkletProcessor: class {constructor(){this.port={postMessage(){}};}},
+vm.runInNewContext(readFileSync(new URL('../audio-processor.js', import.meta.url), 'utf8').replace(/^import .*;\n/, ''), {
+ SpectralOnset, sampleRate: sr, AudioWorkletProcessor: class {constructor(){this.port={postMessage(){}};}},
  registerProcessor: (_, cls) => {Processor=cls;},
 });
 function buffer(data, channels=[data]) {
@@ -14,7 +15,7 @@ function buffer(data, channels=[data]) {
 }
 function live(data) {
  const processor=new Processor(), tracker=new TempoTracker(); let result=null;
- processor.port.postMessage=batch=>{for(const s of batch){const r=tracker.push(s.beatRms);if(r!==undefined)result=r;}};
+ processor.port.postMessage=batch=>{for(const s of batch){const r=tracker.push(s.beatRms,50,s.spectralFlux);if(r!==undefined)result=r;}};
  for(let i=0;i<data.length;i+=128)processor.process([[data.subarray(i,i+128)]]);
  return result;
 }
@@ -42,3 +43,9 @@ assert.ok(Math.abs(louder.energy-quiet.energy-10)<=1,'6 dB gain changes level by
 const inverted=Float32Array.from(tone,x=>-x);
 assert.equal(analyzeAudioBuffer(buffer(tone,[tone,inverted])).energy,quiet.energy,'stereo phase must not cancel energy');
 console.log('Silence, steady tone, level scaling and opposite-phase stereo: OK');
+const changed=Float32Array.from({length:sr*50},(_,i)=>{
+ const t=i/sr,local=t<25?t:t-25,bpm=t<25?90:150;
+ return .6*Math.exp(-(local%(60/bpm))*45)*Math.sin(2*Math.PI*80*t);
+});
+assert.ok(Math.abs(live(changed).bpm-150)<1,'tracker follows a real tempo change');
+console.log('Real tempo change 90 → 150 BPM: OK');
