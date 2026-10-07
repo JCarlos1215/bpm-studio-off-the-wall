@@ -45,7 +45,7 @@ def create_app(data_dir=None):
             'MP3_STUDIO_FRAME_ANCESTORS',
             "'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:8080 http://127.0.0.1:8080",
         )
-        response.headers['Content-Security-Policy'] = f"default-src 'self'; img-src 'self' https: data:; media-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors {frame_ancestors}; base-uri 'self'; form-action 'self'"
+        response.headers['Content-Security-Policy'] = f"default-src 'self'; img-src 'self' https: data:; media-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-src https://www.youtube.com https://w.soundcloud.com; frame-ancestors {frame_ancestors}; base-uri 'self'; form-action 'self'"
         if request.path.startswith('/api/'):
             response.headers['Cache-Control'] = 'no-store'
         return response
@@ -79,7 +79,8 @@ def create_app(data_dir=None):
         if not isinstance(payload, dict) or not isinstance(payload.get('query'), str):
             raise ValueError('Introduce una búsqueda válida.')
         try:
-            return jsonify(tracks=providers.search(payload['query']))
+            tracks = providers.search(payload['query'])
+            return jsonify(tracks=[{**track, 'preview_url': providers.preview_url(track)} for track in tracks])
         except providers.SourceError:
             raise
         except Exception as exc:

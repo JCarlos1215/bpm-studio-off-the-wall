@@ -118,6 +118,7 @@ function setView(next) {
   render(); window.scrollTo({top:0, behavior:'smooth'});
 }
 function setMode(next) {
+  closePreview();
   mode = next;
   $$('[data-mode]').forEach(button => { button.classList.toggle('selected',button.dataset.mode === next); button.setAttribute('aria-selected',String(button.dataset.mode === next)); });
   $('#query-label').textContent = {link:'PEGA EL ENLACE DE TU CANCIÓN',search:'BUSCA POR ARTISTA O NOMBRE DE CANCIÓN',playlist:'PEGA EL ENLACE DE TU LISTA O ÁLBUM'}[next];
@@ -185,13 +186,38 @@ $('#convert-form').addEventListener('submit', async (event) => {
   try {
     savePreferences();
     if (mode === 'search') {
+      closePreview();
       const data = await api('/api/search', {method:'POST', body:JSON.stringify({query})}); results = data.tracks;
-      $('#search-results').innerHTML = results.length ? results.map((track,index) => `<div class="track-row search-row">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist)} · ${duration(track.duration)} · ${escapeHTML(track.source)}</small></div><button class="secondary" data-result="${index}">${icon('convert')} Convertir</button></div>`).join('') : empty('No encontramos esta canción','Prueba una búsqueda con el nombre del artista y de la canción.');
+      $('#search-results').innerHTML = results.length ? results.map((track,index) => `<div class="track-row search-row">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist)} · ${duration(track.duration)} · ${escapeHTML(track.source)}</small></div><div class="track-buttons">${track.preview_url ? `<button class="secondary" data-preview="${index}" aria-label="Vista previa de ${escapeHTML(track.title)}">▶ Vista previa</button>` : ''}<button class="secondary" data-result="${index}">${icon('convert')} Convertir</button></div></div>`).join('') : empty('No encontramos esta canción','Prueba una búsqueda con el nombre del artista y de la canción.');
       $('#search-count').textContent = `${results.length} resultados`; $('#search-section').hidden = false;
     } else { await createJob(query,mode === 'playlist'); $('#query').value = ''; }
   } catch (error) { $('#form-error').textContent = error.message; $('#form-error').hidden = false; }
   finally { $('#submit-button').disabled = false; $('#submit-button').innerHTML = label; }
 });
+function closePreview() {
+  $('#preview-player').replaceChildren();
+  if ($('#preview-dialog').open) $('#preview-dialog').close();
+}
+function showPreview(index) {
+  const track = results[index];
+  if (!track?.preview_url) return;
+  let url;
+  try { url = new URL(track.preview_url); } catch { return; }
+  if (url.protocol !== 'https:' || !['www.youtube.com','w.soundcloud.com'].includes(url.hostname)) return;
+  closePreview();
+  $('#preview-description').textContent = `${track.title} · ${track.artist || 'Artista sin identificar'} · ${track.source}`;
+  $('#preview-source').href = track.source_url;
+  const player = document.createElement('iframe');
+  player.src = url.href;
+  player.title = `Reproducir vista previa de ${track.title}`;
+  player.className = track.source === 'soundcloud' ? 'preview-frame soundcloud-preview' : 'preview-frame';
+  player.allow = 'autoplay; encrypted-media; fullscreen';
+  player.referrerPolicy = 'strict-origin-when-cross-origin';
+  $('#preview-player').append(player);
+  $('#preview-dialog').showModal();
+}
+$('#preview-dialog').addEventListener('close', () => $('#preview-player').replaceChildren());
+$('#preview-dialog').addEventListener('cancel', closePreview);
 function showDetails(job,index) {
   const track = job.tracks[index]; if (!track) return;
   $('#track-detail').innerHTML = `<div class="detail-intro">${artwork(track)}<div><h3>${escapeHTML(track.title)}</h3><p>${escapeHTML(track.artist || 'Artista sin identificar')}</p></div></div><dl class="detail-grid"><dt>Álbum</dt><dd>${escapeHTML(track.album || 'Sin identificar')}</dd><dt>Género</dt><dd>${escapeHTML(track.genre || 'Sin identificar')}</dd><dt>Año</dt><dd>${escapeHTML(track.year || '—')}</dd><dt>Duración</dt><dd>${duration(track.duration)}</dd><dt>Calidad</dt><dd>MP3 · ${job.options.bitrate} kbps</dd><dt>Origen</dt><dd>${escapeHTML(track.source)}${track.audio_source_url ? ' · audio equivalente en ' + escapeHTML(track.audio_source_provider || 'youtube') : ''}</dd><dt>Estado</dt><dd>${names[track.status]}</dd></dl>${track.status === 'completed' ? `<audio class="detail-audio" controls preload="none" src="/api/jobs/${job.id}/tracks/${index}/download"></audio>` : ''}${track.error ? `<div class="form-error">${escapeHTML(track.error)}</div>` : ''}${track.warnings?.length ? `<div class="info-box">${track.warnings.map(escapeHTML).join('<br>')}</div>` : ''}<div class="lyrics">${escapeHTML(track.lyrics || 'No hay letras disponibles para esta canción.')}</div>`;
@@ -199,6 +225,7 @@ function showDetails(job,index) {
 }
 document.addEventListener('click', async (event) => {
   const button = event.target.closest('button'); if (!button) return;
+  if (button.dataset.preview !== undefined) return showPreview(Number(button.dataset.preview));
   if (button.dataset.view) return setView(button.dataset.view);
   if (button.dataset.mode) return setMode(button.dataset.mode);
   if (button.dataset.close) { $(`#${button.dataset.close}`).close(); savePreferences(); return; }

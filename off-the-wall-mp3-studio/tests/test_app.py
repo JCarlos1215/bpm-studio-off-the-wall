@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 import copy
 import json
 from pathlib import Path
@@ -273,3 +275,15 @@ def test_spotify_rejects_truncated_audio(app, tmp_path, monkeypatch):
     assert result['status'] == 'failed'
     assert 'duración' in result['tracks'][0]['error']
     assert client.get(f"/api/jobs/{job['id']}/tracks/0/download").status_code != 200
+
+
+def test_search_includes_preview_without_downloading_audio(app, monkeypatch):
+    track = {'title':'Song','source':'youtube','source_url':'https://www.youtube.com/watch?v=YJVmu6yttiw'}
+    monkeypatch.setattr(providers, 'search', Mock(return_value=[track]))
+    monkeypatch.setattr(engine, 'YoutubeDL', Mock(side_effect=AssertionError('Preview must not download audio')))
+    response = app.test_client().post('/api/search',headers=HEADERS,json={'query':'Song'})
+    assert response.status_code == 200
+    assert '/embed/YJVmu6yttiw' in response.json['tracks'][0]['preview_url']
+    policy = response.headers['Content-Security-Policy']
+    assert 'frame-src https://www.youtube.com https://w.soundcloud.com;' in policy
+    assert "media-src 'self';" in policy

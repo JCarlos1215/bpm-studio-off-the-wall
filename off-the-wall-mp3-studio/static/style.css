@@ -25,3 +25,5 @@ dialog{width:520px;max-width:calc(100% - 32px);padding:30px;color:var(--text);ba
 .embedded body{background:transparent;background-image:none;background-attachment:initial}.embedded .shell{max-width:none;margin:0;padding:0}.embedded .studio-header,.embedded .topbar,.embedded main>footer{display:none}.embedded .studio-nav{margin-top:4px}
 .download-stats article{background:linear-gradient(135deg,#1c2f4755,#04070c88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .converter-card,.job-card,.library-track,.search-row,dialog{background:linear-gradient(135deg,#c4dfff12,#0a0b0d88 42%,#05060799);backdrop-filter:blur(12px) saturate(135%);-webkit-backdrop-filter:blur(12px) saturate(135%)}
+
+.preview-frame{display:block;width:100%;height:300px;border:0;border-radius:12px;background:#090a0c}.soundcloud-preview{height:166px}#preview-description{line-height:1.6;color:var(--muted)}#preview-source{color:var(--accent)}.search-row .track-buttons{display:flex;gap:8px;flex-wrap:wrap}.search-row .track-buttons button{white-space:nowrap}@media(max-width:700px){.preview-frame{height:220px}.soundcloud-preview{height:166px}}

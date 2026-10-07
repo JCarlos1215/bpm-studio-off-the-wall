@@ -14,7 +14,7 @@ from importlib.metadata import version, PackageNotFoundError
 
 import tempfile
 import time
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin, parse_qs, urlencode
 
 import requests
 from yt_dlp import YoutubeDL
@@ -460,6 +460,27 @@ def resolve(query, playlist=False):
     if provider == 'deezer':
         return deezer_resolve(query)
     return extract_online(query, playlist=playlist)
+
+
+def preview_url(track):
+    url = track.get('source_url') or ''
+    try:
+        provider = source_type(url)
+    except SourceError:
+        return ''
+    parsed = urlparse(url)
+    if provider == 'youtube':
+        identifier = parsed.path.strip('/') if parsed.hostname == 'youtu.be' else parse_qs(parsed.query).get('v', [''])[0]
+        if not identifier and parsed.path.startswith(('/shorts/', '/embed/')):
+            identifier = parsed.path.split('/')[2]
+        if re.fullmatch(r'[A-Za-z0-9_-]{11}', identifier):
+            return f'https://www.youtube.com/embed/{identifier}?playsinline=1&autoplay=0'
+    if provider == 'soundcloud' and parsed.path.strip('/'):
+        canonical = 'https://soundcloud.com' + parsed.path
+        return 'https://w.soundcloud.com/player/?' + urlencode({
+            'url':canonical, 'auto_play':'false', 'visual':'false', 'show_related':'false',
+        })
+    return ''
 
 
 def search(query):
