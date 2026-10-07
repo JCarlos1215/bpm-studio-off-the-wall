@@ -113,3 +113,25 @@ def test_incomplete_credentials_use_public_embed(monkeypatch):
     monkeypatch.setenv('SPOTIFY_CLIENT_ID', 'test-client')
     embed(monkeypatch, {'id': 'PublicList', 'type': 'playlist', 'trackList': [ROW]})
     assert len(providers.spotify_resolve(URL)[1]) == 1
+
+
+@pytest.mark.parametrize('status', [401, 403, 404])
+def test_api_access_failure_uses_public_metadata(monkeypatch, status):
+    monkeypatch.setenv('SPOTIFY_CLIENT_ID', 'fixture')
+    monkeypatch.setenv('SPOTIFY_CLIENT_SECRET', 'fixture')
+    monkeypatch.setattr(providers, 'spotify_token', lambda: 'fixture-token')
+    monkeypatch.setattr(providers.requests, 'get', Mock(return_value=Mock(status_code=status)))
+    public = Mock(return_value=('Lista pública', [ROW]))
+    monkeypatch.setattr(providers, 'spotify_public_resolve', public)
+    assert providers.spotify_resolve(URL) == ('Lista pública', [ROW])
+    public.assert_called_once_with('playlist', 'PublicList')
+
+
+def test_api_rate_limit_does_not_fall_back(monkeypatch):
+    monkeypatch.setenv('SPOTIFY_CLIENT_ID', 'fixture')
+    monkeypatch.setenv('SPOTIFY_CLIENT_SECRET', 'fixture')
+    monkeypatch.setattr(providers, 'spotify_token', lambda: 'fixture-token')
+    monkeypatch.setattr(providers.requests, 'get', Mock(return_value=Mock(status_code=429)))
+    monkeypatch.setattr(providers, 'spotify_public_resolve', Mock(side_effect=AssertionError('Should respect rate limit')))
+    with pytest.raises(providers.SourceError, match='HTTP 429'):
+        providers.spotify_resolve(URL)

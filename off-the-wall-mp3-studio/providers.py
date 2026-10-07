@@ -404,7 +404,13 @@ def spotify_resolve(url):
             raise SourceError(f'Spotify devolvió HTTP {response.status_code}. Comprueba que el enlace es público y tu aplicación tiene acceso a este recurso.')
         return response.json()
 
-    info = fetch(f'{kind}s/{identifier}')
+    try:
+        info = fetch(f'{kind}s/{identifier}')
+    except SourceError as error:
+        if any(f'HTTP {status}' in str(error) for status in (401, 403, 404)):
+            logging.getLogger(__name__).warning('Spotify API unavailable; trying public embed metadata')
+            return spotify_public_resolve(kind, identifier)
+        raise
     if kind == 'track':
         return info['name'], [spotify_track(info)]
     page = info.get('tracks') or fetch(f'playlists/{identifier}/items')
