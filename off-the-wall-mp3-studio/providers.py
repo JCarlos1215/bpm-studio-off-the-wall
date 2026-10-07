@@ -1,6 +1,9 @@
 """Equivalent source resolution to AllToMP3 using maintained extractors."""
 import os
 import re
+import shutil
+import subprocess
+from importlib.metadata import version, PackageNotFoundError
 import time
 from urllib.parse import urlparse
 
@@ -49,6 +52,26 @@ def ydl_options(**extra):
         'retries': 2, 'extractor_retries': 2, 'cachedir': False,
         'js_runtimes': {'node': {}}, **extra,
     }
+
+
+def downloader_status():
+    """Expose runtime versions without credentials or filesystem paths."""
+    packages = {}
+    for name in ('yt-dlp', 'yt-dlp-ejs'):
+        try:
+            packages[name] = version(name)
+        except PackageNotFoundError:
+            packages[name] = None
+    node_version = None
+    if shutil.which('node'):
+        try:
+            node_version = subprocess.check_output(
+                ['node', '--version'], text=True, timeout=5).strip()
+        except (OSError, subprocess.SubprocessError):
+            pass
+    major = int(node_version.lstrip('v').split('.')[0]) if node_version else 0
+    return {**packages, 'node': node_version,
+            'javascript_ready': major >= 22 and bool(packages['yt-dlp-ejs'])}
 
 
 def clean_title(title):

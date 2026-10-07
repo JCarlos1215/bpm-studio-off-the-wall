@@ -207,3 +207,32 @@ def test_restart_marks_interrupted_jobs_failed(tmp_path):
     assert restored.get('interrupted')['status'] == 'failed'
     assert restored.get('interrupted')['tracks'][0]['status'] == 'failed'
     restored.executor.shutdown(wait=True)
+
+
+def test_downloader_runtime_diagnostics(monkeypatch):
+    monkeypatch.setattr(providers, 'version', lambda name: '0.8.0' if name == 'yt-dlp-ejs' else '2026.8.19')
+    monkeypatch.setattr(providers.shutil, 'which', lambda name: '/bin/node')
+    monkeypatch.setattr(providers.subprocess, 'check_output', lambda *a, **k: 'v22.1.0\n')
+    assert providers.downloader_status()['javascript_ready'] is True
+    monkeypatch.setattr(providers.subprocess, 'check_output', lambda *a, **k: 'v20.0.0\n')
+    assert providers.downloader_status()['javascript_ready'] is False
+
+
+def test_player_response_error_is_actionable():
+    result = engine.readable_error(Exception('ERROR: [youtube] U41bONK2V-U: Failed to extract any player response'))
+    assert '/api/status' in result
+    assert 'Node.js 22' in result
+
+
+def test_spotify_track_metadata_does_not_supply_audio(monkeypatch):
+    monkeypatch.setattr(providers, 'spotify_token', lambda: 'test-token')
+    class Response:
+        status_code = 200
+        def json(self):
+            return {'name': 'Prueba', 'artists': [{'name': 'Estudio'}],
+                    'duration_ms': 1000, 'album': {'name': 'Sesiones'},
+                    'external_urls': {'spotify': 'https://open.spotify.com/track/example'}}
+    monkeypatch.setattr(providers.requests, 'get', lambda *a, **k: Response())
+    _, tracks = providers.spotify_resolve('https://open.spotify.com/track/example')
+    assert tracks[0]['source'] == 'spotify'
+    assert 'audio_source_url' not in tracks[0]

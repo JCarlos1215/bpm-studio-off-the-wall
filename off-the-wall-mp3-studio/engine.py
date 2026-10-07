@@ -350,6 +350,10 @@ class JobStore:
 
 def readable_error(error):
     message = re.sub(r'\x1b\[[0-9;]*m', '', str(error)).strip()
+    if 'Failed to extract any player response' in message:
+        return ('YouTube no devolvió una respuesta válida al servidor. Revisa la versión de '
+                'yt-dlp, sus componentes EJS y Node.js 22 o posterior en /api/status; '
+                'si están actualizados, comprueba la disponibilidad del video y la conexión del servidor.')
     if 'Sign in' in message or 'bot' in message.lower():
         return 'La plataforma requiere verificación o inicio de sesión. Prueba otro enlace disponible.'
     return message[:1200] or 'No se pudo completar esta operación.'

@@ -70,7 +70,8 @@ def create_app(data_dir=None):
         from engine import ffmpeg_path
         return jsonify(ok=True, ffmpeg=bool(Path(ffmpeg_path()).is_file()),
                        spotify_configured=bool(os.getenv('SPOTIFY_CLIENT_ID') and os.getenv('SPOTIFY_CLIENT_SECRET')),
-                       playlist_limit=providers.MAX_ITEMS)
+                       playlist_limit=providers.MAX_ITEMS,
+                       downloader=providers.downloader_status())
 
     @app.post('/api/search')
     def search():

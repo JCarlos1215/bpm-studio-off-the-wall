@@ -33,7 +33,7 @@ cp .env.example .env
 .venv/bin/python app.py
 ```
 
-FFmpeg viene incluido mediante `imageio-ffmpeg`. También puedes indicar `FFMPEG_PATH` para usar una instalación propia. Para extraer audio de YouTube instala Node.js 20 o posterior: yt-dlp lo utiliza para resolver los desafíos JavaScript. Este Mac ya tiene Node.js.
+FFmpeg viene incluido mediante `imageio-ffmpeg`. También puedes indicar `FFMPEG_PATH` para usar una instalación propia. Para extraer audio de YouTube instala Node.js 22 o posterior: yt-dlp lo utiliza para resolver los desafíos JavaScript. Este Mac ya tiene Node.js.
 
 ## Funciones
 
