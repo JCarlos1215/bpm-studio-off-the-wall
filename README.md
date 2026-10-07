@@ -101,6 +101,7 @@ La pestaña **Separador de stems** integra mediante iframe el servicio público
 Se carga al abrir la pestaña. El audio seleccionado se sube al proveedor externo;
 GitHub Pages no ejecuta el modelo ni almacena el audio. BS-Roformer-Viperx-1297
 permite separar voz e instrumental; HTDemucs FT permite cuatro stems y HTDemucs 6s
-seis. Hay instrucciones de selección y un enlace externo para Safari o problemas
-de autenticación y descarga dentro del iframe. El servicio puede requerir una
+seis. La interfaz, las instrucciones, la carga y la descarga se presentan dentro
+del iframe local `stems-separator/`. El servicio integrado permite descargas, pero
+no abrir ventanas ni navegar fuera del marco. El servicio puede requerir una
 cuenta, imponer cuotas de GPU o tener colas; la calidad depende del material.

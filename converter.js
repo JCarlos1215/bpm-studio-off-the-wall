@@ -74,7 +74,9 @@ window.addEventListener('message',event=>{if(event.source!==keyAnalyzerFrame.con
 window.addEventListener('pagehide',()=>{cancel();clearResult();});hint();
 
 $('showStems').addEventListener('click',()=>switchView('stems'));
-$('reloadStems').addEventListener('click',()=>{
-  $('stemsStatus').textContent='Recargando el servicio externo. Si no aparece, ábrelo en otra pestaña.';
-  $('stemsFrame').src=$('stemsFrame').dataset.src;
+const stemsFrame=$('stemsFrame');
+window.addEventListener('message',event=>{
+  if(event.source!==stemsFrame.contentWindow||event.origin!==location.origin||event.data?.type!=='stems-resize')return;
+  const height=Number(event.data.height);
+  if(Number.isFinite(height))stemsFrame.style.height=`${Math.max(720,Math.min(height,6000))}px`;
 });
