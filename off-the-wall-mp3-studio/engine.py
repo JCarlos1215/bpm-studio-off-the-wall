@@ -277,6 +277,13 @@ class JobStore:
         self.update(identifier, index, status='searching')
         equivalent = track['source'] in ('spotify', 'deezer')
         attempts = []
+        source_attempts = []
+
+        def record_attempt(provider, error):
+            message = readable_error(error)
+            attempts.append(message)
+            source_attempts.append({'provider': provider, 'error': message})
+            self.update(identifier, index, source_attempts=list(source_attempts))
 
         def candidate_urls():
             if not equivalent:
@@ -287,11 +294,17 @@ class JobStore:
                 if matches:
                     yield matches[0]['source_url']
             except providers.SourceError as error:
-                attempts.append(readable_error(error))
+                record_attempt('youtube', error)
             check()
             self.update(identifier, index, status='searching')
-            for candidate in providers.soundcloud_equivalents(track):
-                yield candidate['source_url']
+            try:
+                matches = providers.soundcloud_equivalents(track)
+                if not matches:
+                    record_attempt('soundcloud', providers.SourceError('No se encontró una coincidencia fiable de título, artista y duración en SoundCloud.'))
+                for candidate in matches:
+                    yield candidate['source_url']
+            except providers.SourceError as error:
+                record_attempt('soundcloud', error)
 
         last_update = [0]
 
@@ -336,7 +349,7 @@ class JobStore:
                 check()
                 if not equivalent:
                     raise
-                attempts.append(readable_error(error))
+                record_attempt(providers.source_type(url), error)
                 for temporary in folder.glob(f'source-{index}.*'):
                     temporary.unlink(missing_ok=True)
         else:

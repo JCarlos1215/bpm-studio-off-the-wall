@@ -230,12 +230,14 @@ def equivalent_score(track, candidate):
 
 
 def soundcloud_equivalents(track):
-    query = f"scsearch12:{track['artist']} {track['title']}"
+    query = f"scsearch25:{track['artist']} {track['title']}"
     with open_downloader(ydl_options(extract_flat=True, skip_download=True)) as ydl:
         info = ydl.extract_info(query, download=False)
     candidates = [video_track(item, 'soundcloud') for item in (info or {}).get('entries', []) if item]
     matches = [(equivalent_score(track, candidate), candidate) for candidate in candidates]
-    return [candidate for score, candidate in sorted(matches, key=lambda row: row[0], reverse=True) if score > 0][:3]
+    selected = [candidate for score, candidate in sorted(matches, key=lambda row: row[0], reverse=True) if score > 0][:5]
+    logging.getLogger(__name__).warning('SoundCloud equivalents: %s candidates, %s matches', len(candidates), len(selected))
+    return selected
 
 
 def get_json(url, **kwargs):
