@@ -1,6 +1,7 @@
 Flask>=3.1,<4
 waitress>=3.0,<4
-yt-dlp[default]>=2026.8.19
+# Verified nightly: official yt-dlp troubleshooting recommends testing nightly.
+yt-dlp[default]==2026.9.27.232945.dev0
 mutagen>=1.47,<2
 requests>=2.32,<3
 imageio-ffmpeg>=0.6,<1

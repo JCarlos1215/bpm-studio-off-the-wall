@@ -293,18 +293,10 @@ class JobStore:
                 pct = min(69, data.get('downloaded_bytes', 0) / total * 70) if total else 0
                 self.update(identifier, index, progress=round(pct, 1))
 
-        class Logger:
-            def debug(self, message):
-                pass
-            def warning(self, message):
-                pass
-            def error(self, message):
-                pass
-
         with providers.open_downloader(providers.ydl_options(
             format='bestaudio/best', noplaylist=True,
             outtmpl=str(folder / f'source-{index}.%(ext)s'),
-            progress_hooks=[progress], logger=Logger(),
+            progress_hooks=[progress],
             max_filesize=200 * 1024 * 1024,
             match_filter=lambda info, *, incomplete: 'El audio supera el límite de 30 minutos.' if (info.get('duration') or 0) > 1800 else None,
         ), factory=YoutubeDL) as ydl:
@@ -351,6 +343,12 @@ class JobStore:
 def readable_error(error):
     message = re.sub(r'\x1b\[[0-9;]*m', '', str(error)).strip()
     lower = message.lower()
+    if '429' in lower or 'too many requests' in lower:
+        return 'YouTube limita las solicitudes del servidor (HTTP 429). Espera antes de reintentar.'
+    if 'certificate verify failed' in lower:
+        return 'El servidor no pudo verificar el certificado de la fuente de audio. Revisa los certificados del despliegue.'
+    if '403' in lower or 'forbidden' in lower:
+        return 'La fuente de audio rechazó el acceso del servidor (HTTP 403). No se pudo descargar este archivo.'
     if 'sign in' in lower or 'not a bot' in lower or 'confirm you’re not' in lower:
         if 'youtube' not in lower:
             return 'La plataforma requiere verificación o inicio de sesión para acceder a este audio.'

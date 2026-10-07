@@ -82,3 +82,19 @@ def test_youtube_challenge_error_is_distinct_from_other_errors(monkeypatch):
     monkeypatch.setenv('YTDLP_COOKIES_FILE', '/private/session.txt')
     assert 'rechazó la sesión' in engine.readable_error(error)
     assert engine.readable_error(ValueError('robot dance not available')) == 'robot dance not available'
+
+
+def test_transport_warning_survives_player_error(monkeypatch):
+    from yt_dlp.utils import DownloadError
+    factory = Mock()
+    downloader = factory.return_value.__enter__.return_value
+    def fail(*args, **kwargs):
+        factory.call_args.args[0]['logger'].warning('Unable to download webpage: HTTP Error 429: Too Many Requests https://host.example/?token=secret')
+        raise DownloadError('Failed to extract any player response')
+    downloader.extract_info.side_effect = fail
+    monkeypatch.setattr(providers, 'YoutubeDL', factory)
+    with pytest.raises(providers.SourceError) as error:
+        providers.extract_online('https://www.youtube.com/watch?v=test')
+    assert '429' in str(error.value)
+    assert 'secret' not in str(error.value)
+    assert 'HTTP 429' in engine.readable_error(error.value)

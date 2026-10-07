@@ -1,6 +1,8 @@
 """Equivalent source resolution to AllToMP3 using maintained extractors."""
 from contextlib import contextmanager
 import json
+import logging
+from collections import deque
 import os
 from html.parser import HTMLParser
 import re
@@ -14,6 +16,7 @@ from urllib.parse import urlparse
 
 import requests
 from yt_dlp import YoutubeDL
+from yt_dlp.utils import DownloadError
 
 
 class SourceError(ValueError):
@@ -53,7 +56,7 @@ def source_type(query):
 
 def ydl_options(**extra):
     return {
-        'quiet': True, 'no_warnings': True, 'socket_timeout': 20,
+        'quiet': True, 'no_warnings': False, 'socket_timeout': 20,
         'retries': 2, 'extractor_retries': 2, 'cachedir': False,
         'js_runtimes': {'node': {}}, **extra,
     }
@@ -78,14 +81,44 @@ def downloader_status():
     return {**packages, 'node': node_version,
             'javascript_ready': major >= 22 and bool(packages['yt-dlp-ejs'])}
 
+
+class ExtractionLogger:
+    """Retain the transport failure hidden by yt-dlp's final player error."""
+    def __init__(self):
+        self.warnings = deque(maxlen=6)
+
+    @staticmethod
+    def safe_detail(message):
+        text = re.sub(r'https?://[^\s]+', '[url]', str(message))
+        text = re.sub(r'\x1b\[[0-9;]*m', '', text)
+        return text.replace('\n', ' ')[:800]
+
+    def debug(self, message):
+        pass
+
+    def warning(self, message):
+        detail = self.safe_detail(message)
+        self.warnings.append(detail)
+        logging.getLogger(__name__).warning('yt-dlp: %s', detail)
+
+    def error(self, message):
+        logging.getLogger(__name__).error('yt-dlp: %s', self.safe_detail(message))
+
+
 @contextmanager
 def open_downloader(options, factory=None):
     """Use an optional server session; keep mounted secrets read-only."""
+    logger = ExtractionLogger()
+    options = {**options, 'logger': logger}
     cookie_file = os.getenv('YTDLP_COOKIES_FILE', '').strip()
     factory = factory or YoutubeDL
     if not cookie_file:
         with factory(options) as downloader:
-            yield downloader
+            try:
+                yield downloader
+            except DownloadError as exc:
+                detail = ' | '.join([logger.safe_detail(exc), *logger.warnings])
+                raise SourceError(detail) from exc
         return
     with tempfile.TemporaryDirectory(prefix='mp3-session-') as directory:
         cookie_copy = os.path.join(directory, 'cookies.txt')
@@ -95,7 +128,11 @@ def open_downloader(options, factory=None):
         except OSError as exc:
             raise SourceError('No se pudo leer la sesión configurada en YTDLP_COOKIES_FILE del servidor.') from exc
         with factory({**options, 'cookiefile': cookie_copy}) as downloader:
-            yield downloader
+            try:
+                yield downloader
+            except DownloadError as exc:
+                detail = ' | '.join([logger.safe_detail(exc), *logger.warnings])
+                raise SourceError(detail) from exc
 
 
 def clean_title(title):
