@@ -56,8 +56,8 @@ def mock_source(monkeypatch, tmp_path, count=2, provider="youtube"):
     track['source'] = provider
     if provider == 'soundcloud':
         track['source_url'] = 'https://soundcloud.com/studio/fixture'
-    elif provider == 'spotify':
-        track['source_url'] = 'https://open.spotify.com/track/fixture'
+    elif provider in ('spotify', 'deezer'):
+        track['source_url'] = 'https://open.spotify.com/track/fixture' if provider == 'spotify' else 'https://www.deezer.com/track/123'
         monkeypatch.setattr(providers, 'extract_online', lambda *_: ('Prueba', [{'source_url': 'https://www.youtube.com/watch?v=fixture'}]))
     monkeypatch.setattr(providers, 'resolve', lambda *_: ('Playlist de prueba', [copy.deepcopy(track) for _ in range(count)]))
     monkeypatch.setattr(providers, 'enrich', lambda track, lyrics: (track.update(lyrics='Letra de prueba original') or []))
@@ -82,7 +82,7 @@ def mock_source(monkeypatch, tmp_path, count=2, provider="youtube"):
     monkeypatch.setattr(engine, 'YoutubeDL', Downloader)
 
 
-@pytest.mark.parametrize("provider", ["youtube", "soundcloud", "spotify"])
+@pytest.mark.parametrize("provider", ["youtube", "soundcloud", "spotify", "deezer"])
 def test_conversion_tag_download_zip_and_persistence(app, tmp_path, monkeypatch, provider):
     mock_source(monkeypatch, tmp_path, provider=provider)
     client = app.test_client()

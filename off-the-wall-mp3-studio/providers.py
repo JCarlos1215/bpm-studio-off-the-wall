@@ -14,7 +14,7 @@ from importlib.metadata import version, PackageNotFoundError
 
 import tempfile
 import time
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 import requests
 from yt_dlp import YoutubeDL
@@ -64,7 +64,7 @@ def source_type(query):
         'youtube': {'youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'},
         'soundcloud': {'soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com'},
         'spotify': {'open.spotify.com'},
-        'deezer': {'deezer.com', 'www.deezer.com'},
+        'deezer': {'deezer.com', 'www.deezer.com', 'link.deezer.com', 'deezer.page.link'},
     }
     for provider, allowed in hosts.items():
         if host in allowed:
@@ -262,7 +262,7 @@ def get_json(url, **kwargs):
 def deezer_track(item, album=None):
     album = album or item.get('album') or {}
     return {
-        'title': item.get('title', ''), 'artist': (item.get('artist') or {}).get('name', ''),
+        'title': item.get('title', ''), 'artist': ', '.join(dict.fromkeys(a.get('name') for a in item.get('contributors', []) if a.get('name'))) or (item.get('artist') or {}).get('name', ''),
         'album': album.get('title', ''), 'genre': ((album.get('genres') or {}).get('data') or [{}])[0].get('name', ''),
         'duration': item.get('duration') or 0, 'cover': album.get('cover_xl') or album.get('cover_big') or '',
         'source_url': item.get('link') or f"https://www.deezer.com/track/{item['id']}",
@@ -272,7 +272,18 @@ def deezer_track(item, album=None):
 
 
 def deezer_resolve(url):
-    match = re.search(r'/(track|album|playlist)/(\d+)', urlparse(url).path)
+    source_type(url)
+    # Follow sharing redirects only within explicitly supported Deezer hosts.
+    for _ in range(5):
+        if urlparse(url).hostname in ('deezer.com', 'www.deezer.com'):
+            break
+        response = requests.get(url, headers=HEADERS, timeout=HTTP_TIMEOUT, allow_redirects=False)
+        if response.status_code not in (301, 302, 303, 307, 308) or not response.headers.get('Location'):
+            raise SourceError('No se pudo abrir el enlace compartido de Deezer. Copia el enlace completo de la canción, álbum o playlist.')
+        url = urljoin(url, response.headers['Location'])
+        if source_type(url) != 'deezer':
+            raise SourceError('El enlace compartido no dirige a Deezer.')
+    match = re.fullmatch(r'/(?:[a-z]{2}/)?(track|album|playlist)/(\d+)/?', urlparse(url).path)
     if not match:
         raise SourceError('Usa el enlace completo de una canción, álbum o lista de Deezer.')
     kind, identifier = match.groups()
@@ -285,8 +296,9 @@ def deezer_resolve(url):
     items = page.get('data', [])
     while page.get('next') and len(items) < MAX_ITEMS:
         next_url = page['next']
-        if urlparse(next_url).hostname != 'api.deezer.com':
-            break
+        parsed = urlparse(next_url)
+        if parsed.scheme != 'https' or parsed.hostname != 'api.deezer.com' or parsed.username or parsed.password or parsed.port not in (None, 443):
+            raise SourceError('Deezer devolvió una página de canciones no válida.')
         page = get_json(next_url.replace('http://', 'https://', 1))
         items.extend(page.get('data', []))
     tracks = [deezer_track(item, info if kind == 'album' else None) for item in items[:MAX_ITEMS]]

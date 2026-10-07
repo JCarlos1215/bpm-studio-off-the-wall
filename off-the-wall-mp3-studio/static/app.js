@@ -121,7 +121,7 @@ function setMode(next) {
   mode = next;
   $$('[data-mode]').forEach(button => { button.classList.toggle('selected',button.dataset.mode === next); button.setAttribute('aria-selected',String(button.dataset.mode === next)); });
   $('#query-label').textContent = {link:'PEGA EL ENLACE DE TU CANCIÓN',search:'BUSCA POR ARTISTA O NOMBRE DE CANCIÓN',playlist:'PEGA EL ENLACE DE TU LISTA O ÁLBUM'}[next];
-  $('#query').placeholder = {link:'https://www.youtube.com/watch?v=…',search:'Artista — nombre de la canción',playlist:'Enlace de una playlist o álbum público'}[next];
+  $('#query').placeholder = {link:'Enlace de YouTube, SoundCloud, Spotify o Deezer',search:'Artista — nombre de la canción',playlist:'Enlace de una playlist o álbum público'}[next];
   $('#query').value = ''; $('#form-error').hidden = true;
   $('#submit-button').innerHTML = `${next === 'search' ? 'Buscar canción' : 'Convertir a MP3'}${icon(next === 'search' ? 'search' : 'arrow')}`;
   $('#search-section').hidden = true; $('#query').focus();
