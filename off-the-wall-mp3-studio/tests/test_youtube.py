@@ -123,3 +123,19 @@ def test_youtube_limit_pauses_requests(monkeypatch):
 ])
 def test_equivalent_match_rejects_wrong_versions(candidate, accepted):
     assert bool(providers.equivalent_score({'title':'Song', 'artist':'Artist', 'duration':200}, candidate)) is accepted
+
+
+def test_remix_matches_collaborators_in_title():
+    track = {'title': 'Los Luchadores - Remix', 'artist': 'Gletzzi, Off The Wall', 'duration':317.76}
+    candidate = {'title':'Conjunto África - Los Luchadores (Gletzzi & Off The Wall Remix)', 'artist':'GLETZZI (MX)', 'duration':317.806}
+    assert providers.equivalent_score(track, candidate) > 0
+    candidate['title'] = 'Conjunto África - Los Luchadores (Gletzzi Remix)'
+    assert providers.equivalent_score(track, candidate) == 0
+    candidate['title'] = 'Conjunto África - Los Luchadores (Gletzzi & Off The Wall Remix)'
+    candidate['duration'] = 30
+    assert providers.equivalent_score(track, candidate) == 0
+
+
+def test_combined_failure_keeps_both_provider_causes():
+    message = 'No se encontró una fuente completa y accesible que coincida con esta canción. YouTube HTTP 429. SoundCloud sin coincidencias.'
+    assert engine.readable_error(providers.SourceError(message)) == message

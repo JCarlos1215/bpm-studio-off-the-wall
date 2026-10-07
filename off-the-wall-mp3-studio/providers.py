@@ -220,7 +220,20 @@ def equivalent_score(track, candidate):
     if artist in candidate_title:
         candidate_title = candidate_title.replace(artist, '').strip()
         artist_score = 1
+    # Remix uploads often credit collaborators in parentheses and a different order.
+    collaborators = [normalize_match(part) for part in track.get('artist', '').split(',') if part.strip()]
+    original_title = normalize_match(clean_title(candidate.get('title')))
+    credited_remix = ('remix' in title.split() and 'remix' in original_title.split()
+                      and all(re.search(r'(?<!\w)' + re.escape(part) + r'(?!\w)', original_title)
+                              for part in collaborators))
+    if credited_remix:
+        candidate_title = original_title
+        for part in collaborators:
+            candidate_title = re.sub(r'(?<!\w)' + re.escape(part) + r'(?!\w)', ' ', candidate_title)
+        artist_score = 1
     title_score = SequenceMatcher(None, title, candidate_title).ratio()
+    if credited_remix and set(title.split()) <= set(candidate_title.split()):
+        title_score = 1
     if title_score < .85 or artist_score < .8:
         return 0
     expected, actual = track.get('duration') or 0, candidate.get('duration') or 0

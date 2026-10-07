@@ -399,6 +399,8 @@ class JobStore:
 def readable_error(error):
     message = re.sub(r'\x1b\[[0-9;]*m', '', str(error)).strip()
     lower = message.lower()
+    if message.startswith('No se encontró una fuente completa y accesible'):
+        return message[:1200]
     if '429' in lower or 'too many requests' in lower:
         return 'YouTube limita las solicitudes del servidor (HTTP 429). Espera antes de reintentar.'
     if 'certificate verify failed' in lower:
