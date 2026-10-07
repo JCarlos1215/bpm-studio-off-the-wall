@@ -186,7 +186,7 @@ $('#convert-form').addEventListener('submit', async (event) => {
     savePreferences();
     if (mode === 'search') {
       const data = await api('/api/search', {method:'POST', body:JSON.stringify({query})}); results = data.tracks;
-      $('#search-results').innerHTML = results.length ? results.map((track,index) => `<div class="track-row search-row">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist)} · ${duration(track.duration)}</small></div><button class="secondary" data-result="${index}">${icon('convert')} Convertir</button></div>`).join('') : empty('No encontramos esta canción','Prueba una búsqueda con el nombre del artista y de la canción.');
+      $('#search-results').innerHTML = results.length ? results.map((track,index) => `<div class="track-row search-row">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist)} · ${duration(track.duration)} · ${escapeHTML(track.source)}</small></div><button class="secondary" data-result="${index}">${icon('convert')} Convertir</button></div>`).join('') : empty('No encontramos esta canción','Prueba una búsqueda con el nombre del artista y de la canción.');
       $('#search-count').textContent = `${results.length} resultados`; $('#search-section').hidden = false;
     } else { await createJob(query,mode === 'playlist'); $('#query').value = ''; }
   } catch (error) { $('#form-error').textContent = error.message; $('#form-error').hidden = false; }

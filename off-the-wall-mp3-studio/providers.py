@@ -242,11 +242,15 @@ def equivalent_score(track, candidate):
     return title_score + artist_score
 
 
-def soundcloud_equivalents(track):
-    query = f"scsearch25:{track['artist']} {track['title']}"
+def soundcloud_search(query, limit=8):
+    query = f'scsearch{limit}:{query}'
     with open_downloader(ydl_options(extract_flat=True, skip_download=True)) as ydl:
         info = ydl.extract_info(query, download=False)
-    candidates = [video_track(item, 'soundcloud') for item in (info or {}).get('entries', []) if item]
+    return [video_track(item, 'soundcloud') for item in (info or {}).get('entries', []) if item]
+
+
+def soundcloud_equivalents(track):
+    candidates = soundcloud_search(f"{track['artist']} {track['title']}", limit=25)
     matches = [(equivalent_score(track, candidate), candidate) for candidate in candidates]
     selected = [candidate for score, candidate in sorted(matches, key=lambda row: row[0], reverse=True) if score > 0][:5]
     logging.getLogger(__name__).warning('SoundCloud equivalents: %s candidates, %s matches', len(candidates), len(selected))
@@ -461,7 +465,18 @@ def resolve(query, playlist=False):
 def search(query):
     if source_type(query) != 'search':
         raise SourceError('Para buscar escribe un artista o canción. Los enlaces se convierten desde la pestaña Enlace.')
-    return extract_online(query, search_limit=8)[1]
+    try:
+        return extract_online(query, search_limit=8)[1]
+    except SourceError as youtube_error:
+        logging.getLogger(__name__).warning('YouTube search unavailable; trying SoundCloud')
+        try:
+            tracks = soundcloud_search(query)
+        except SourceError as soundcloud_error:
+            raise SourceError('La búsqueda no está disponible en YouTube ni SoundCloud. '
+                              + str(youtube_error) + ' ' + str(soundcloud_error)) from soundcloud_error
+        if not tracks:
+            raise SourceError('YouTube no está disponible y SoundCloud no encontró resultados para esta búsqueda.')
+        return tracks
 
 
 def enrich(track, include_lyrics):

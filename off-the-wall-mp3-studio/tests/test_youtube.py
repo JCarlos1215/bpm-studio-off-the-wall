@@ -139,3 +139,26 @@ def test_remix_matches_collaborators_in_title():
 def test_combined_failure_keeps_both_provider_causes():
     message = 'No se encontró una fuente completa y accesible que coincida con esta canción. YouTube HTTP 429. SoundCloud sin coincidencias.'
     assert engine.readable_error(providers.SourceError(message)) == message
+
+
+def test_artist_search_falls_back_to_soundcloud(monkeypatch):
+    monkeypatch.setattr(providers, 'extract_online', Mock(side_effect=providers.SourceError('YouTube HTTP 429')))
+    tracks = [{'title':'Song', 'source':'soundcloud', 'source_url':'https://soundcloud.com/studio/song'}]
+    fallback = Mock(return_value=tracks)
+    monkeypatch.setattr(providers, 'soundcloud_search', fallback)
+    assert providers.search('Skrillex') == tracks
+    fallback.assert_called_once_with('Skrillex')
+
+
+def test_search_preserves_youtube_results(monkeypatch):
+    tracks = [{'source':'youtube'}]
+    monkeypatch.setattr(providers, 'extract_online', Mock(return_value=('Search', tracks)))
+    monkeypatch.setattr(providers, 'soundcloud_search', Mock(side_effect=AssertionError('Unneeded fallback')))
+    assert providers.search('Skrillex') == tracks
+
+
+def test_empty_fallback_explains_both_sources(monkeypatch):
+    monkeypatch.setattr(providers, 'extract_online', Mock(side_effect=providers.SourceError('YouTube HTTP 429')))
+    monkeypatch.setattr(providers, 'soundcloud_search', Mock(return_value=[]))
+    with pytest.raises(providers.SourceError, match='SoundCloud no encontró'):
+        providers.search('Unknown artist')
