@@ -275,7 +275,7 @@ async function showPreview(index, existingJob = null, existingIndex = 0) {
   const generation = previewGeneration;
   const panel = existingJob ? document.createElement('div') : $(`#inline-preview-${index}`);
   if (!panel) return;
-  if (existingJob) { panel.className = 'inline-preview'; $(`[data-waveform="${existingJob.id}:${existingIndex}"]`).closest('.track-row').append(panel); }
+  if (existingJob) { panel.className = 'inline-preview'; $(view === 'library' ? '#library' : view === 'history' ? '#history' : '#queue').querySelector(`[data-waveform="${existingJob.id}:${existingIndex}"]`).closest('.track-row').append(panel); }
   panel.classList.remove('preview-error');
   panel.hidden = false; activePreview = key;
   if (!existingJob) {
