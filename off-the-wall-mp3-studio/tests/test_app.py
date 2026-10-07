@@ -240,3 +240,36 @@ def test_spotify_track_metadata_does_not_supply_audio(monkeypatch):
     _, tracks = providers.spotify_resolve('https://open.spotify.com/track/example')
     assert tracks[0]['source'] == 'spotify'
     assert 'audio_source_url' not in tracks[0]
+
+
+def test_spotify_uses_soundcloud_when_youtube_is_unavailable(app, tmp_path, monkeypatch):
+    mock_source(monkeypatch, tmp_path, count=1, provider='spotify')
+    def fail(*args, **kwargs):
+        raise providers.SourceError('YouTube HTTP 429')
+    monkeypatch.setattr(providers, 'extract_online', fail)
+    monkeypatch.setattr(providers, 'soundcloud_equivalents', lambda track: [{'source_url': 'https://soundcloud.com/studio/fixture'}])
+    client = app.test_client()
+    job = client.post('/api/jobs', headers=HEADERS, json={'query':'https://open.spotify.com/track/fixture'}).json['job']
+    result = wait_for(app.extensions['jobs'], job['id'])
+    assert result['status'] == 'completed', result
+    track = result['tracks'][0]
+    assert track['audio_source_provider'] == 'soundcloud'
+    assert track['audio_source_url'] == 'https://soundcloud.com/studio/fixture'
+    assert any('SoundCloud' in warning for warning in track['warnings'])
+    assert client.get(f"/api/jobs/{job['id']}/tracks/0/download").status_code == 200
+
+
+def test_spotify_rejects_truncated_audio(app, tmp_path, monkeypatch):
+    mock_source(monkeypatch, tmp_path, count=1, provider='spotify')
+    original = providers.resolve
+    def long_metadata(*args):
+        title, tracks = original(*args)
+        tracks[0]['duration'] = 213
+        return title, tracks
+    monkeypatch.setattr(providers, 'resolve', long_metadata)
+    client = app.test_client()
+    job = client.post('/api/jobs', headers=HEADERS, json={'query':'https://open.spotify.com/track/fixture'}).json['job']
+    result = wait_for(app.extensions['jobs'], job['id'])
+    assert result['status'] == 'failed'
+    assert 'duración' in result['tracks'][0]['error']
+    assert client.get(f"/api/jobs/{job['id']}/tracks/0/download").status_code != 200

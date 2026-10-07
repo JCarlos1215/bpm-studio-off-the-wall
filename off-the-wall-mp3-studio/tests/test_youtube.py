@@ -101,3 +101,25 @@ def test_transport_warning_survives_player_error(monkeypatch):
     assert '429' in str(error.value)
     assert 'secret' not in str(error.value)
     assert 'HTTP 429' in engine.readable_error(error.value)
+
+
+def test_youtube_limit_pauses_requests(monkeypatch):
+    monkeypatch.setattr(providers, '_youtube_retry_at', 0)
+    monkeypatch.setattr(providers.time, 'monotonic', lambda: 100)
+    providers.record_youtube_limit('ERROR: [youtube] Failed player response | HTTP Error 429')
+    assert providers.youtube_cooldown_remaining() == 900
+    with pytest.raises(providers.SourceError, match='429'):
+        providers.check_youtube_cooldown('https://www.youtube.com/watch?v=test')
+    providers.check_youtube_cooldown('https://soundcloud.com/studio/track')
+
+
+@pytest.mark.parametrize('candidate, accepted', [
+    ({'title':'Song', 'artist':'Artist', 'duration':200}, True),
+    ({'title':'Artist - Song', 'artist':'Uploader', 'duration':200}, True),
+    ({'title':'Song', 'artist':'Other person', 'duration':200}, False),
+    ({'title':'Artist - Song Remix', 'artist':'Artist', 'duration':200}, False),
+    ({'title':'Song', 'artist':'Artist', 'duration':30}, False),
+    ({'title':'Song', 'artist':'Artist', 'duration':0}, False),
+])
+def test_equivalent_match_rejects_wrong_versions(candidate, accepted):
+    assert bool(providers.equivalent_score({'title':'Song', 'artist':'Artist', 'duration':200}, candidate)) is accepted

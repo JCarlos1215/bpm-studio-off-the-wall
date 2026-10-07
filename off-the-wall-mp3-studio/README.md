@@ -159,3 +159,12 @@ compose.yaml        Ejecución con disco persistente
 Proyecto de referencia: [AllToMP3/alltomp3](https://github.com/AllToMP3/alltomp3), Basile Bruneau y colaboradores, revisión `7ea827e9fa20843ff3dbf53d0ae4927d13d5d715`. Interfaz de referencia: [AllToMP3/alltomp3-app](https://github.com/AllToMP3/alltomp3-app). Esta implementación se distribuye bajo AGPL-3.0-or-later; ver `LICENSE` y `NOTICE.md`. Se incluyen enlaces al proyecto original en la interfaz.
 
 Fuentes técnicas: [API de yt-dlp](https://github.com/yt-dlp/yt-dlp#embedding-yt-dlp), [Spotify Client Credentials](https://developer.spotify.com/documentation/web-api/tutorials/client-credentials-flow), [LRCLIB](https://lrclib.net/docs).
+
+
+### Spotify cuando YouTube limita a Render
+
+Se fijó la nightly oficial 2026.9.27.232945.dev0 para reproducir la instalación probada. Los registros conservan advertencias de transporte, ocultando URLs con posibles tokens. Ante HTTP 429 de YouTube el proceso pausa solicitudes de esa fuente durante 15 minutos; el tiempo restante aparece en `/api/status`. La pausa se reinicia al reiniciar el proceso.
+
+Spotify y Deezer intentan YouTube y, si falla, SoundCloud. La búsqueda alternativa compara título, artista y duración; excluye covers/remixes no pedidos y formatos identificados como preview. Se verifica también la duración real del MP3. Una coincidencia de metadatos no garantiza que sea la misma grabación: Detalles indica la fuente efectiva y una advertencia cuando se utiliza SoundCloud. Contenido que requiere autenticación o DRM se omite, sin desbloquearlo. Si no existe audio completo accesible, la canción se marca como fallida.
+
+Spotify Developers: este backend utiliza Web API con Client Credentials. `SPOTIFY_CLIENT_ID` y `SPOTIFY_CLIENT_SECRET` se guardan únicamente en Render. No usa OAuth de usuario ni rutas `/callback`: añadir redirect URIs no modifica la extracción de audio.

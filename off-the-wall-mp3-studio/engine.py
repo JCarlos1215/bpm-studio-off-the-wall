@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import imageio_ffmpeg
 import requests
+from mutagen.mp3 import MP3
 from mutagen.id3 import APIC, ID3, TALB, TCON, TDRC, TIT2, TPE1, TRCK, USLT
 from yt_dlp import YoutubeDL
 
@@ -274,14 +275,24 @@ class JobStore:
                 raise Cancelled()
 
         self.update(identifier, index, status='searching')
-        url = track['source_url']
-        if track['source'] in ('spotify', 'deezer'):
-            _, matches = providers.extract_online(f"{track['artist']} {track['title']} audio")
-            url = matches[0]['source_url']
-            track['audio_source_url'] = url
-        check()
-        providers.source_type(url)
-        self.update(identifier, index, status='downloading')
+        equivalent = track['source'] in ('spotify', 'deezer')
+        attempts = []
+
+        def candidate_urls():
+            if not equivalent:
+                yield track['source_url']
+                return
+            try:
+                _, matches = providers.extract_online(f"{track['artist']} {track['title']} audio")
+                if matches:
+                    yield matches[0]['source_url']
+            except providers.SourceError as error:
+                attempts.append(readable_error(error))
+            check()
+            self.update(identifier, index, status='searching')
+            for candidate in providers.soundcloud_equivalents(track):
+                yield candidate['source_url']
+
         last_update = [0]
 
         def progress(data):
@@ -293,21 +304,44 @@ class JobStore:
                 pct = min(69, data.get('downloaded_bytes', 0) / total * 70) if total else 0
                 self.update(identifier, index, progress=round(pct, 1))
 
-        with providers.open_downloader(providers.ydl_options(
-            format='bestaudio/best', noplaylist=True,
-            outtmpl=str(folder / f'source-{index}.%(ext)s'),
-            progress_hooks=[progress],
-            max_filesize=200 * 1024 * 1024,
-            match_filter=lambda info, *, incomplete: 'El audio supera el límite de 30 minutos.' if (info.get('duration') or 0) > 1800 else None,
-        ), factory=YoutubeDL) as ydl:
-            info = ydl.extract_info(url, download=True)
+        def download_audio(url):
+            providers.source_type(url)
+            providers.check_youtube_cooldown(url)
+            self.update(identifier, index, status='downloading', progress=0)
+            with providers.open_downloader(providers.ydl_options(
+                format='bestaudio[format_id!*=preview]/best[format_id!*=preview]', noplaylist=True,
+                outtmpl=str(folder / f'source-{index}.%(ext)s'),
+                progress_hooks=[progress],
+                max_filesize=200 * 1024 * 1024,
+                match_filter=lambda info, *, incomplete: 'El audio supera el límite de 30 minutos.' if (info.get('duration') or 0) > 1800 else None,
+            ), factory=YoutubeDL) as ydl:
+                info = ydl.extract_info(url, download=True)
+                check()
+                if not info:
+                    raise providers.SourceError('Este audio no está disponible o supera el límite de 30 minutos.')
+                source = Path(ydl.prepare_filename(info))
+            if not source.is_file():
+                raise RuntimeError('No se encontró el archivo de audio descargado.')
+            return info, source
+
+        for url in candidate_urls():
             check()
-            if not info:
-                raise providers.SourceError('Este audio no está disponible o supera el límite de 30 minutos.')
-            source = Path(ydl.prepare_filename(info))
-        if not source.is_file():
-            raise RuntimeError('No se encontró el archivo de audio descargado.')
-        full = providers.video_track(info, track['source'] if track['source'] in ('youtube', 'soundcloud') else 'youtube')
+            try:
+                info, source = download_audio(url)
+                if equivalent:
+                    track['audio_source_url'] = url
+                    track['audio_source_provider'] = providers.source_type(url)
+                break
+            except providers.SourceError as error:
+                check()
+                if not equivalent:
+                    raise
+                attempts.append(readable_error(error))
+                for temporary in folder.glob(f'source-{index}.*'):
+                    temporary.unlink(missing_ok=True)
+        else:
+            raise providers.SourceError('No se encontró una fuente completa y accesible que coincida con esta canción. ' + ' '.join(dict.fromkeys(attempts)))
+        full = providers.video_track(info, providers.source_type(url))
         for field in ('title', 'artist', 'duration', 'cover'):
             if not track.get(field):
                 track[field] = full.get(field, '')
@@ -321,8 +355,17 @@ class JobStore:
                      progress=lambda p: self.update(identifier, index, progress=round(70 + p * .25, 1)),
                      cancelled=event.is_set)
         check()
+        if equivalent:
+            actual_duration = MP3(target).info.length
+            expected_duration = track.get('duration') or 0
+            if expected_duration and abs(actual_duration - expected_duration) > max(5, expected_duration * .08):
+                target.unlink(missing_ok=True)
+                raise providers.SourceError('El audio disponible no coincide con la duración de Spotify. No se entrega una muestra ni una versión de otra duración.')
+            track['duration'] = actual_duration
         self.update(identifier, index, status='tagging', progress=95)
         warnings = providers.enrich(track, options['lyrics']) if options['tags'] else []
+        if equivalent and track.get('audio_source_provider') == 'soundcloud':
+            warnings.append('Audio equivalente encontrado en SoundCloud. Revisa la fuente; puede ser otra versión.')
         check()
         cover = None
         if options['tags'] and track.get('cover'):

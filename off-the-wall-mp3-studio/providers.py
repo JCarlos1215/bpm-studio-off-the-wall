@@ -2,6 +2,8 @@
 from contextlib import contextmanager
 import json
 import logging
+import unicodedata
+from difflib import SequenceMatcher
 from collections import deque
 import os
 from html.parser import HTMLParser
@@ -25,6 +27,22 @@ class SourceError(ValueError):
 
 MAX_ITEMS = int(os.getenv('MAX_PLAYLIST_ITEMS', '100'))
 HTTP_TIMEOUT = 20
+_youtube_retry_at = 0.0
+
+
+def youtube_cooldown_remaining():
+    return max(0, int(_youtube_retry_at - time.monotonic()))
+
+
+def check_youtube_cooldown(url):
+    if source_type(url) in ('youtube', 'search') and youtube_cooldown_remaining():
+        raise SourceError(f'YouTube limita las solicitudes (HTTP 429). Pausa activa: {youtube_cooldown_remaining()} segundos.')
+
+
+def record_youtube_limit(detail):
+    global _youtube_retry_at
+    if 'youtube' in detail.lower() and ('429' in detail or 'too many requests' in detail.lower()):
+        _youtube_retry_at = time.monotonic() + 900
 HEADERS = {'User-Agent': 'AllToMP3-Web/1.0 (https://github.com/AllToMP3)'}
 
 
@@ -79,7 +97,8 @@ def downloader_status():
             pass
     major = int(node_version.lstrip('v').split('.')[0]) if node_version else 0
     return {**packages, 'node': node_version,
-            'javascript_ready': major >= 22 and bool(packages['yt-dlp-ejs'])}
+            'javascript_ready': major >= 22 and bool(packages['yt-dlp-ejs']),
+            'youtube_cooldown_seconds': youtube_cooldown_remaining()}
 
 
 class ExtractionLogger:
@@ -118,6 +137,7 @@ def open_downloader(options, factory=None):
                 yield downloader
             except DownloadError as exc:
                 detail = ' | '.join([logger.safe_detail(exc), *logger.warnings])
+                record_youtube_limit(detail)
                 raise SourceError(detail) from exc
         return
     with tempfile.TemporaryDirectory(prefix='mp3-session-') as directory:
@@ -132,6 +152,7 @@ def open_downloader(options, factory=None):
                 yield downloader
             except DownloadError as exc:
                 detail = ' | '.join([logger.safe_detail(exc), *logger.warnings])
+                record_youtube_limit(detail)
                 raise SourceError(detail) from exc
 
 
@@ -158,6 +179,7 @@ def video_track(info, provider='youtube'):
 
 
 def extract_online(query, search_limit=1, playlist=False):
+    check_youtube_cooldown(query)
     provider = source_type(query)
     if provider == 'search':
         query = f'ytsearch{search_limit}:{query}'
@@ -175,6 +197,45 @@ def extract_online(query, search_limit=1, playlist=False):
     if not tracks:
         raise SourceError('La lista está vacía o sus canciones no están disponibles.')
     return info.get('title') or tracks[0]['title'], tracks
+
+
+def normalize_match(value):
+    value = unicodedata.normalize('NFKD', value or '')
+    value = ''.join(c for c in value if not unicodedata.combining(c)).lower()
+    return re.sub(r'[\W_]+', ' ', value).strip()
+
+
+def equivalent_score(track, candidate):
+    """Reject other artists, versions and substantially different durations."""
+    title = normalize_match(track.get('title'))
+    artist = normalize_match(track.get('artist'))
+    candidate_title = normalize_match(clean_title(candidate.get('title')))
+    candidate_artist = normalize_match(candidate.get('artist'))
+    if not title or not artist:
+        return 0
+    variants = ('remix', 'cover', 'live', 'karaoke', 'instrumental', 'slowed', 'nightcore', 'bootleg', 'sped')
+    if any(word in candidate_title.split() and word not in title.split() for word in variants):
+        return 0
+    artist_score = SequenceMatcher(None, artist, candidate_artist).ratio()
+    if artist in candidate_title:
+        candidate_title = candidate_title.replace(artist, '').strip()
+        artist_score = 1
+    title_score = SequenceMatcher(None, title, candidate_title).ratio()
+    if title_score < .85 or artist_score < .8:
+        return 0
+    expected, actual = track.get('duration') or 0, candidate.get('duration') or 0
+    if expected and (not actual or abs(expected - actual) > max(5, expected * .08)):
+        return 0
+    return title_score + artist_score
+
+
+def soundcloud_equivalents(track):
+    query = f"scsearch12:{track['artist']} {track['title']}"
+    with open_downloader(ydl_options(extract_flat=True, skip_download=True)) as ydl:
+        info = ydl.extract_info(query, download=False)
+    candidates = [video_track(item, 'soundcloud') for item in (info or {}).get('entries', []) if item]
+    matches = [(equivalent_score(track, candidate), candidate) for candidate in candidates]
+    return [candidate for score, candidate in sorted(matches, key=lambda row: row[0], reverse=True) if score > 0][:3]
 
 
 def get_json(url, **kwargs):
