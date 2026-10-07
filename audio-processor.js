@@ -1,4 +1,4 @@
-import { SpectralOnset } from './spectral-onset.js?v=tempo-20261007-2';
+import { SpectralOnset } from './spectral-onset.js?v=tempo-20261007-3';
 class SignalProcessor extends AudioWorkletProcessor {
   constructor(){super();this.reset();this.port.onmessage=()=>this.reset();}
   reset(){this.flux=0;this.decimationSum=0;this.decimationCount=0;this.nextSample=sampleRate/11025;this.inputCount=0;this.onset=new SpectralOnset(11025,value=>{this.flux=value;});this.low=0;this.lowSum=0;this.alpha=1-Math.exp(-2*Math.PI*180/sampleRate);this.sum=0;this.peak=0;this.n=0;this.frames=0;this.batch=[];this.period=Math.round(sampleRate/100);}

@@ -1,6 +1,6 @@
-import { fft } from '../fft.js?v=tempo-20261007-2';
-import { SpectralOnset } from '../spectral-onset.js?v=tempo-20261007-2';
-import { estimateBeat } from '../beat-analysis.js?v=tempo-20261007-2';
+import { fft } from '../fft.js?v=tempo-20261007-3';
+import { SpectralOnset } from '../spectral-onset.js?v=tempo-20261007-3';
+import { estimateBeat } from '../beat-analysis.js?v=tempo-20261007-3';
 const SAMPLE_RATE = 11025;
 const ENVELOPE_RATE = 100;
 const FFT_SIZE = 8192;

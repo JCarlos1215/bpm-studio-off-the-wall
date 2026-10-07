@@ -1,4 +1,4 @@
-import { fft } from './fft.js?v=tempo-20261007-2';
+import { fft } from './fft.js?v=tempo-20261007-3';
 
 // Positive spectral change distinguishes drum attacks from sustained bass notes.
 export class SpectralOnset {

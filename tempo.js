@@ -1,4 +1,4 @@
-import { estimateBeat } from './beat-analysis.js?v=tempo-20261007-2';
+import { estimateBeat } from './beat-analysis.js?v=tempo-20261007-3';
 // Fixed 100 Hz energy envelope: independent of display refresh rate.
 export class TempoTracker {
   constructor(){ this.reset(); }

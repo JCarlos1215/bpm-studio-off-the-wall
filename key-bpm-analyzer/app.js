@@ -1,5 +1,5 @@
-import { analyzeAudioBuffer, formatTime } from './analysis.js?v=tempo-20261007-2';
-import { selectCamelot } from './camelot.js';
+import { analyzeAudioBuffer, formatTime } from './analysis.js?v=tempo-20261007-3';
+import { selectCamelot } from './camelot.js?v=tempo-20261007-3';
 
 if (new URLSearchParams(window.location.search).has('embed')) {
   document.documentElement.classList.add('embedded');

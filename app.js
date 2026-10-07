@@ -1,4 +1,4 @@
-import {TempoTracker} from './tempo.js?v=tempo-20261007-2';
+import {TempoTracker} from './tempo.js?v=tempo-20261007-3';
 const $=id=>document.getElementById(id);
 const tracker=new TempoTracker();
 let context,stream,source,analyser,processor,frame=0,running=false,busy=false,view='spectrum',sessionPeak=0,seconds=0,lastRms=0,beat=0,previousRms=0,lastBeat=0,generation=0;
@@ -43,7 +43,7 @@ async function start(){
     if(id!==generation){stream.getTracks().forEach(t=>t.stop());return;}
     await resume;
     if(!context.audioWorklet)throw new Error('WORKLET');
-    await context.audioWorklet.addModule('./audio-processor.js?v=tempo-20261007-2');
+    await context.audioWorklet.addModule('./audio-processor.js?v=tempo-20261007-3');
     source=context.createMediaStreamSource(stream);analyser=context.createAnalyser();analyser.fftSize=8192;analyser.smoothingTimeConstant=.65;analyser.minDecibels=-100;analyser.maxDecibels=-10;
     processor=new AudioWorkletNode(context,'signal-processor',{channelCount:1,channelCountMode:'explicit',numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
     source.connect(analyser);source.connect(processor);processor.connect(context.destination);processor.port.onmessage=e=>receive(e.data);
