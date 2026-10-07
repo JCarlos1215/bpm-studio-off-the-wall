@@ -135,3 +135,16 @@ def test_api_rate_limit_does_not_fall_back(monkeypatch):
     monkeypatch.setattr(providers, 'spotify_public_resolve', Mock(side_effect=AssertionError('Should respect rate limit')))
     with pytest.raises(providers.SourceError, match='HTTP 429'):
         providers.spotify_resolve(URL)
+
+
+def test_playlist_items_access_failure_uses_public_metadata(monkeypatch):
+    monkeypatch.setenv('SPOTIFY_CLIENT_ID', 'fixture')
+    monkeypatch.setenv('SPOTIFY_CLIENT_SECRET', 'fixture')
+    monkeypatch.setattr(providers, 'spotify_token', lambda: 'fixture-token')
+    info = Mock(status_code=200)
+    info.json.return_value = {'name':'Lista', 'tracks':{}}
+    monkeypatch.setattr(providers.requests, 'get', Mock(side_effect=[info, Mock(status_code=401)]))
+    public = Mock(return_value=('Lista pública', [ROW]))
+    monkeypatch.setattr(providers, 'spotify_public_resolve', public)
+    assert providers.spotify_resolve(URL) == ('Lista pública', [ROW])
+    public.assert_called_once_with('playlist', 'PublicList')

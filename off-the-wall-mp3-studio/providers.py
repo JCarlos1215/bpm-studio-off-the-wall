@@ -396,6 +396,16 @@ def spotify_resolve(url):
     kind, identifier = match.groups()
     if not (os.getenv('SPOTIFY_CLIENT_ID', '').strip() and os.getenv('SPOTIFY_CLIENT_SECRET', '').strip()):
         return spotify_public_resolve(kind, identifier)
+    try:
+        return spotify_api_resolve(kind, identifier)
+    except SourceError as error:
+        if any(f'HTTP {status}' in str(error) for status in (401, 403, 404)):
+            logging.getLogger(__name__).warning('Spotify API unavailable; trying public embed metadata')
+            return spotify_public_resolve(kind, identifier)
+        raise
+
+
+def spotify_api_resolve(kind, identifier):
     headers = {**HEADERS, 'Authorization': 'Bearer ' + spotify_token()}
 
     def fetch(path):
@@ -404,13 +414,7 @@ def spotify_resolve(url):
             raise SourceError(f'Spotify devolvió HTTP {response.status_code}. Comprueba que el enlace es público y tu aplicación tiene acceso a este recurso.')
         return response.json()
 
-    try:
-        info = fetch(f'{kind}s/{identifier}')
-    except SourceError as error:
-        if any(f'HTTP {status}' in str(error) for status in (401, 403, 404)):
-            logging.getLogger(__name__).warning('Spotify API unavailable; trying public embed metadata')
-            return spotify_public_resolve(kind, identifier)
-        raise
+    info = fetch(f'{kind}s/{identifier}')
     if kind == 'track':
         return info['name'], [spotify_track(info)]
     page = info.get('tracks') or fetch(f'playlists/{identifier}/items')
