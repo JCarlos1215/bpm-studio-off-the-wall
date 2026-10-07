@@ -141,7 +141,8 @@ function jobCard(job) {
   return `<article class="job-card"><div class="job-head"><div class="job-title"><strong>${escapeHTML(job.title)}</strong><span class="job-meta">${date(job.created_at)} · MP3 ${job.options.bitrate} kbps${job.tracks.length ? ` · ${done}/${job.tracks.length} listas` : ''}</span></div><div class="job-actions"><span class="badge ${job.status}">${active ? '<span class="spinner"></span>' : ''}${names[job.status] || escapeHTML(job.status)}</span>${!active && done ? `<a class="secondary" href="/api/jobs/${job.id}/archive">${icon('download')} ZIP</a>` : ''}${active ? `<button class="text-button" data-action="cancel" data-job="${job.id}">Cancelar</button>` : `<button class="text-button" data-action="retry" data-job="${job.id}">Reintentar</button><button class="icon-button" data-action="delete" data-job="${job.id}" aria-label="Eliminar conversión">×</button>`}</div></div>${job.error ? `<p class="job-error">${escapeHTML(job.error)}</p>` : ''}${tracks}${more}</article>`;
 }
 function render() {
-  if (typeof activePreview === 'string') closePreview();
+  const previewKey = typeof activePreview === 'string' ? activePreview : null;
+  const previewPanel = previewKey ? [...document.querySelectorAll('.inline-preview')].find(panel => !panel.hidden && panel.closest('.track-row')?.querySelector(`[data-waveform="${previewKey}"]`)) : null;
   const completed = jobs.flatMap(job => job.tracks.map((track,index) => ({track,job,index}))).filter(({track}) => track.status === 'completed');
   $('#library-count').textContent = completed.length;
   $('#stat-total').textContent = jobs.length;
@@ -163,6 +164,12 @@ function render() {
   if (view === 'history') {
     const visible = jobs.filter(job => filter === 'all' || (filter === 'active' ? !terminal.has(job.status) : filter === 'failed' ? ['failed','partial','cancelled'].includes(job.status) : job.status === filter));
     $('#history').innerHTML = visible.length ? visible.map(jobCard).join('') : empty('Todavía no hay conversiones aquí','Las conversiones aparecerán en este historial.');
+  }
+  if (previewPanel) {
+    const container = $(view === 'library' ? '#library' : view === 'history' ? '#history' : '#queue');
+    const anchor = container.querySelector(`[data-waveform="${previewKey}"]`);
+    if (anchor) anchor.closest('.track-row').append(previewPanel);
+    else closePreview();
   }
   $$('.progress-fill').forEach(element => { element.style.width = `${element.dataset.progress}%`; });
 }
