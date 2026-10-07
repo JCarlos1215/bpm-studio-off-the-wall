@@ -88,7 +88,7 @@ consulta sus límites y detalles en [`key-bpm-analyzer/README.md`](key-bpm-analy
 > **Nota**: Download Manager requiere el servidor Python local. La conversión de archivos del navegador permanece en este dispositivo.
 ### Reparación de Download Manager (6 de octubre de 2026)
 
-El iframe público utiliza `https://jcarlos1215-bpm-studio-off-the-wall-mp3.onrender.com`, el backend incluido en este repositorio. `descargador-pro-co95.onrender.com` es otra aplicación y no implementa esta cola de trabajos. En localhost el iframe utiliza el puerto 8093 que levanta el iniciador.
+El iframe activo (`mp3Frame` en `index.html`) utiliza `https://jcarlos1215-bpm-studio-off-the-wall-mp3.onrender.com`, el backend incluido en este repositorio. Los archivos antiguos `downloader.js` y `downloader-config.js` no se cargan desde la página actual; su dirección `descargador-pro-co95.onrender.com` pertenece a otra aplicación. En localhost el iframe utiliza el puerto 8093 que levanta el iniciador.
 
 El flujo conserva la arquitectura de AllToMP3: SoundCloud se extrae desde su enlace; Spotify resuelve metadatos (API o embed público) y busca audio equivalente en YouTube. El archivo no procede del audio protegido de Spotify y puede corresponder a otra versión. Se instala `yt-dlp[default]` para mantener compatibles los componentes EJS. `/api/status` expone sus versiones y la disponibilidad de Node.js 22 o posterior.
 
