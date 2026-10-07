@@ -72,7 +72,8 @@ def test_unconfigured_session_does_not_create_cookies():
     factory.return_value.__enter__ = Mock(return_value='downloader')
     factory.return_value.__exit__ = Mock(return_value=False)
     with providers.open_downloader({'quiet': True}, factory=factory):
-        assert factory.call_args.args[0] == {'quiet': True}
+        assert factory.call_args.args[0]['quiet'] is True
+        assert 'cookiefile' not in factory.call_args.args[0]
 
 
 def test_youtube_challenge_error_is_distinct_from_other_errors(monkeypatch):
@@ -87,7 +88,9 @@ def test_youtube_challenge_error_is_distinct_from_other_errors(monkeypatch):
 def test_transport_warning_survives_player_error(monkeypatch):
     from yt_dlp.utils import DownloadError
     factory = Mock()
-    downloader = factory.return_value.__enter__.return_value
+    downloader = Mock()
+    factory.return_value.__enter__ = Mock(return_value=downloader)
+    factory.return_value.__exit__ = Mock(return_value=False)
     def fail(*args, **kwargs):
         factory.call_args.args[0]['logger'].warning('Unable to download webpage: HTTP Error 429: Too Many Requests https://host.example/?token=secret')
         raise DownloadError('Failed to extract any player response')
