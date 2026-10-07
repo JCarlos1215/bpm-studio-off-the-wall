@@ -111,6 +111,7 @@ function savePreferences() {
   $('#lyrics-option').disabled = !preferences.tags;
 }
 function setView(next) {
+  closePreview();
   view = next;
   for (const item of ['convert','library','history']) $(`#${item}-view`).hidden = item !== next;
   $$('[data-view]').forEach(button => { button.classList.toggle('active', button.dataset.view === next); button.setAttribute('aria-pressed', String(button.dataset.view === next)); });
@@ -130,7 +131,7 @@ function setMode(next) {
 function trackRow(track, job, index, library = false) {
   const ready = track.status === 'completed';
   const status = ready ? `${duration(track.duration)} · ${job.options.bitrate} kbps` : names[track.status] || track.status;
-  return `<div class="track-row ${library ? 'library-track' : ''}">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist || 'Artista sin identificar')}${library && track.album ? ' · ' + escapeHTML(track.album) : ''}</small></div><div class="track-status ${track.status === 'failed' ? 'error' : ''}">${track.status === 'failed' ? escapeHTML(track.error) : escapeHTML(status)}${!terminal.has(track.status) ? `<div class="progress"><div class="progress-fill" data-progress="${Math.max(0,Math.min(100,track.progress || 0))}"></div></div>` : ''}</div><div class="track-buttons"><button class="track-detail-button" data-action="detail" data-job="${job.id}" data-index="${index}">Detalles</button>${ready ? `<a class="secondary" href="/api/jobs/${job.id}/tracks/${index}/download" aria-label="Descargar ${escapeHTML(track.title)}">${icon('download')}<span>MP3</span></a>` : ''}</div></div>`;
+  return `<div class="track-row ${library ? 'library-track' : ''}">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist || 'Artista sin identificar')}${library && track.album ? ' · ' + escapeHTML(track.album) : ''}</small></div><div class="track-status ${track.status === 'failed' ? 'error' : ''}">${track.status === 'failed' ? escapeHTML(track.error) : escapeHTML(status)}${!terminal.has(track.status) ? `<div class="progress"><div class="progress-fill" data-progress="${Math.max(0,Math.min(100,track.progress || 0))}"></div></div>` : ''}</div><div class="track-buttons"><button class="track-detail-button" data-action="detail" data-job="${job.id}" data-index="${index}">Detalles</button>${ready ? `<button class="secondary" data-waveform="${job.id}:${index}">▶ Forma de onda</button><a class="secondary" href="/api/jobs/${job.id}/tracks/${index}/download" aria-label="Descargar ${escapeHTML(track.title)}">${icon('download')}<span>MP3</span></a>` : ''}</div></div>`;
 }
 function jobCard(job) {
   const done = job.tracks.filter(t => t.status === 'completed').length;
@@ -140,6 +141,7 @@ function jobCard(job) {
   return `<article class="job-card"><div class="job-head"><div class="job-title"><strong>${escapeHTML(job.title)}</strong><span class="job-meta">${date(job.created_at)} · MP3 ${job.options.bitrate} kbps${job.tracks.length ? ` · ${done}/${job.tracks.length} listas` : ''}</span></div><div class="job-actions"><span class="badge ${job.status}">${active ? '<span class="spinner"></span>' : ''}${names[job.status] || escapeHTML(job.status)}</span>${!active && done ? `<a class="secondary" href="/api/jobs/${job.id}/archive">${icon('download')} ZIP</a>` : ''}${active ? `<button class="text-button" data-action="cancel" data-job="${job.id}">Cancelar</button>` : `<button class="text-button" data-action="retry" data-job="${job.id}">Reintentar</button><button class="icon-button" data-action="delete" data-job="${job.id}" aria-label="Eliminar conversión">×</button>`}</div></div>${job.error ? `<p class="job-error">${escapeHTML(job.error)}</p>` : ''}${tracks}${more}</article>`;
 }
 function render() {
+  if (typeof activePreview === 'string') closePreview();
   const completed = jobs.flatMap(job => job.tracks.map((track,index) => ({track,job,index}))).filter(({track}) => track.status === 'completed');
   $('#library-count').textContent = completed.length;
   $('#stat-total').textContent = jobs.length;
@@ -188,46 +190,109 @@ $('#convert-form').addEventListener('submit', async (event) => {
     if (mode === 'search') {
       closePreview();
       const data = await api('/api/search', {method:'POST', body:JSON.stringify({query, source:$('#search-provider').value})}); results = data.tracks;
-      $('#search-results').innerHTML = results.length ? results.map((track,index) => `<div class="track-row search-row" data-search-row="${index}">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist)} · ${duration(track.duration)} · ${escapeHTML(track.source)}</small></div><div class="track-buttons">${track.preview_url ? `<button class="secondary" data-preview="${index}" aria-label="Vista previa de ${escapeHTML(track.title)}" aria-expanded="false" aria-controls="inline-preview-${index}">▶ Vista previa</button>` : ''}<button class="secondary" data-result="${index}">${icon('convert')} Convertir</button></div><div class="inline-preview" id="inline-preview-${index}" hidden></div></div>`).join('') : empty('No encontramos esta canción','Prueba una búsqueda con el nombre del artista y de la canción.');
+      $('#search-results').innerHTML = results.length ? results.map((track,index) => `<div class="track-row search-row" data-search-row="${index}">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist)} · ${duration(track.duration)} · ${escapeHTML(track.source)}</small></div><div class="track-buttons">${track.source_url ? `<button class="secondary" data-preview="${index}" aria-label="Vista previa de ${escapeHTML(track.title)}" aria-expanded="false" aria-controls="inline-preview-${index}">▶ Vista previa</button>` : ''}<button class="secondary" data-result="${index}">${icon('convert')} Convertir</button></div><div class="inline-preview" id="inline-preview-${index}" hidden></div></div>`).join('') : empty('No encontramos esta canción','Prueba una búsqueda con el nombre del artista y de la canción.');
       $('#search-count').textContent = `${results.length} resultados`; $('#search-section').hidden = false;
     } else { await createJob(query,mode === 'playlist'); $('#query').value = ''; }
   } catch (error) { $('#form-error').textContent = error.message; $('#form-error').hidden = false; }
   finally { $('#submit-button').disabled = false; $('#submit-button').innerHTML = label; }
 });
-let activePreview = null;
+const previewJobs = new Map();
+let activePreview = null, previewGeneration = 0, waveformAudio = null, waveformBlob = null;
 function closePreview() {
+  previewGeneration++;
+  if (waveformAudio) { waveformAudio.pause(); waveformAudio.removeAttribute('src'); waveformAudio.load(); }
+  waveformAudio = null;
+  if (waveformBlob) URL.revokeObjectURL(waveformBlob);
+  waveformBlob = null;
   $$('.inline-preview').forEach(panel => { panel.replaceChildren(); panel.hidden = true; });
   $$('[data-preview]').forEach(button => { button.setAttribute('aria-expanded','false'); button.textContent = '▶ Vista previa'; });
   activePreview = null;
 }
-function showPreview(index) {
-  if (activePreview === index) { closePreview(); return; }
-  const track = results[index];
-  if (!track?.preview_url) return;
-  let url;
-  try { url = new URL(track.preview_url); } catch { return; }
-  if (url.protocol !== 'https:' || !['www.youtube.com','w.soundcloud.com'].includes(url.hostname)) return;
-  closePreview();
-  const panel = $(`#inline-preview-${index}`);
-  if (!panel) return;
-  const player = document.createElement('iframe');
-  player.src = url.href;
-  player.title = `Reproducir vista previa de ${track.title}`;
-  player.className = track.source === 'soundcloud' ? 'preview-frame soundcloud-preview' : 'preview-frame';
-  player.allow = 'autoplay; encrypted-media; fullscreen';
-  player.referrerPolicy = 'strict-origin-when-cross-origin';
-  panel.append(player);
-  if (track.source === 'youtube') {
-    const note = document.createElement('p');
-    note.className = 'preview-note';
-    note.textContent = 'YouTube no ofrece forma de onda. Busca en SoundCloud para escuchar con forma de onda.';
-    panel.append(note);
+async function mountWaveform(panel, job, index, generation) {
+  panel.textContent = 'Cargando forma de onda del audio…';
+  const headers = {};
+  if (serverPassword) headers.Authorization = `Basic ${btoa(`bpmstudio:${serverPassword}`)}`;
+  const response = await fetch(`/api/jobs/${job.id}/tracks/${index}/download`, {headers});
+  if (!response.ok) throw new Error('No se pudo cargar el audio para la vista previa.');
+  const bytes = await response.arrayBuffer();
+  if (generation !== previewGeneration) return;
+  const context = new AudioContext();
+  let decoded;
+  try { decoded = await context.decodeAudioData(bytes.slice(0)); } finally { await context.close(); }
+  if (generation !== previewGeneration) return;
+  const count = 700, peaks = new Float32Array(count);
+  for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
+    const samples = decoded.getChannelData(channel);
+    for (let bin = 0; bin < count; bin++) {
+      const begin = Math.floor(bin * samples.length / count), end = Math.floor((bin + 1) * samples.length / count);
+      for (let sample = begin; sample < end; sample++) peaks[bin] = Math.max(peaks[bin], Math.abs(samples[sample]));
+    }
   }
-  panel.hidden = false;
-  const button = $(`[data-preview="${index}"]`);
-  button.setAttribute('aria-expanded','true');
-  button.textContent = '■ Cerrar vista previa';
-  activePreview = index;
+  const maximum = Math.max(...peaks) || 1;
+  const canvas = document.createElement('canvas');
+  canvas.className = 'audio-waveform'; canvas.width = 1400; canvas.height = 160;
+  canvas.setAttribute('role','slider'); canvas.tabIndex = 0;
+  canvas.setAttribute('aria-label','Posición de reproducción en la forma de onda');
+  canvas.setAttribute('aria-valuemin','0'); canvas.setAttribute('aria-valuemax', String(Math.floor(decoded.duration)));
+  const audio = document.createElement('audio'); audio.controls = true; audio.className = 'waveform-controls';
+  waveformBlob = URL.createObjectURL(new Blob([bytes], {type:'audio/mpeg'})); audio.src = waveformBlob;
+  waveformAudio = audio;
+  const clock = document.createElement('span'); clock.className = 'waveform-time';
+  function draw() {
+    const ctx = canvas.getContext('2d'), progress = audio.currentTime / decoded.duration;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    peaks.forEach((value, bin) => {
+      const height = Math.max(2, value / maximum * 145);
+      ctx.fillStyle = bin / count <= progress ? '#2ac6e2' : '#438b95';
+      ctx.fillRect(bin * 2, (160 - height) / 2, 1.5, height);
+    });
+    clock.textContent = `${duration(audio.currentTime)} / ${duration(decoded.duration)}`;
+    canvas.setAttribute('aria-valuenow', String(Math.floor(audio.currentTime)));
+  }
+  canvas.addEventListener('click', event => { const rect = canvas.getBoundingClientRect(); audio.currentTime = Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width))*decoded.duration; draw(); });
+  canvas.addEventListener('keydown', event => {
+    if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+    event.preventDefault();
+    audio.currentTime = event.key === 'Home' ? 0 : event.key === 'End' ? decoded.duration : Math.max(0,Math.min(decoded.duration,audio.currentTime+(event.key==='ArrowRight'?5:-5)));
+    draw();
+  });
+  audio.addEventListener('timeupdate',draw); audio.addEventListener('seeked',draw);
+  panel.replaceChildren(canvas, clock, audio); draw();
+}
+async function showPreview(index, existingJob = null, existingIndex = 0) {
+  const key = existingJob ? `${existingJob.id}:${existingIndex}` : index;
+  if (activePreview === key) { closePreview(); return; }
+  const track = existingJob ? existingJob.tracks[existingIndex] : results[index];
+  if (!track) return;
+  closePreview();
+  const generation = previewGeneration;
+  const panel = existingJob ? document.createElement('div') : $(`#inline-preview-${index}`);
+  if (!panel) return;
+  if (existingJob) { panel.className = 'inline-preview'; $(`[data-waveform="${existingJob.id}:${existingIndex}"]`).closest('.track-row').append(panel); }
+  panel.classList.remove('preview-error');
+  panel.hidden = false; activePreview = key;
+  if (!existingJob) {
+    const button = $(`[data-preview="${index}"]`);
+    button.setAttribute('aria-expanded','true'); button.textContent = '■ Cerrar vista previa';
+  }
+  try {
+    let job = existingJob || previewJobs.get(track.source_url), selectedIndex = existingIndex;
+    if (!job) {
+      panel.textContent = 'Preparando audio real para la vista previa…';
+      const created = await api('/api/jobs', {method:'POST',body:JSON.stringify({query:track.source_url,options:{bitrate:128,tags:false,lyrics:false,playlist:false}})});
+      job = created.job; selectedIndex = 0;
+      while (!terminal.has(job.status)) {
+        if (generation !== previewGeneration) return;
+        panel.textContent = `Preparando audio: ${names[job.tracks[0]?.status || job.status] || job.status}…`;
+        await new Promise(resolve => setTimeout(resolve,1500));
+        job = (await api(`/api/jobs/${job.id}`)).job;
+      }
+      if (job.tracks[0]?.status !== 'completed') throw new Error(job.tracks[0]?.error || job.error || 'La fuente no permite obtener audio para esta vista previa.');
+      previewJobs.set(track.source_url, job);
+    }
+    if (generation !== previewGeneration) return;
+    await mountWaveform(panel,job,selectedIndex,generation);
+  } catch (error) { if (generation === previewGeneration) { panel.textContent = error.message; panel.classList.add('preview-error'); } }
 }
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closePreview(); });
 function showDetails(job,index) {
@@ -237,6 +302,7 @@ function showDetails(job,index) {
 }
 document.addEventListener('click', async (event) => {
   const button = event.target.closest('button'); if (!button) return;
+  if (button.dataset.waveform) { const [id, item] = button.dataset.waveform.split(':'); const found = jobs.find(job => job.id === id); return showPreview(0,found,Number(item)); }
   if (button.dataset.preview !== undefined) return showPreview(Number(button.dataset.preview));
   if (button.dataset.view) return setView(button.dataset.view);
   if (button.dataset.mode) return setMode(button.dataset.mode);

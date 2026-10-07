@@ -286,4 +286,4 @@ def test_search_includes_preview_without_downloading_audio(app, monkeypatch):
     assert '/embed/YJVmu6yttiw' in response.json['tracks'][0]['preview_url']
     policy = response.headers['Content-Security-Policy']
     assert 'frame-src https://www.youtube.com https://w.soundcloud.com;' in policy
-    assert "media-src 'self';" in policy
+    assert "media-src 'self' blob:;" in policy

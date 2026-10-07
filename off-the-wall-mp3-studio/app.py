@@ -45,7 +45,7 @@ def create_app(data_dir=None):
             'MP3_STUDIO_FRAME_ANCESTORS',
             "'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:8080 http://127.0.0.1:8080",
         )
-        response.headers['Content-Security-Policy'] = f"default-src 'self'; img-src 'self' https: data:; media-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-src https://www.youtube.com https://w.soundcloud.com; frame-ancestors {frame_ancestors}; base-uri 'self'; form-action 'self'"
+        response.headers['Content-Security-Policy'] = f"default-src 'self'; img-src 'self' https: data:; media-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-src https://www.youtube.com https://w.soundcloud.com; frame-ancestors {frame_ancestors}; base-uri 'self'; form-action 'self'"
         if request.path.startswith('/api/'):
             response.headers['Cache-Control'] = 'no-store'
         return response
