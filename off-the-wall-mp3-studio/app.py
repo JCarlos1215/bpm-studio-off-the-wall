@@ -79,7 +79,7 @@ def create_app(data_dir=None):
         if not isinstance(payload, dict) or not isinstance(payload.get('query'), str):
             raise ValueError('Introduce una búsqueda válida.')
         try:
-            tracks = providers.search(payload['query'])
+            tracks = providers.search(payload['query'], source=payload.get('source', 'auto'))
             return jsonify(tracks=[{**track, 'preview_url': providers.preview_url(track)} for track in tracks])
         except providers.SourceError:
             raise

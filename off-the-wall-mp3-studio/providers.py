@@ -483,12 +483,18 @@ def preview_url(track):
     return ''
 
 
-def search(query):
+def search(query, source='auto'):
     if source_type(query) != 'search':
         raise SourceError('Para buscar escribe un artista o canción. Los enlaces se convierten desde la pestaña Enlace.')
+    if source not in ('auto', 'youtube', 'soundcloud'):
+        raise SourceError('Selecciona YouTube o SoundCloud para buscar.')
+    if source == 'soundcloud':
+        return soundcloud_search(query)
     try:
         return extract_online(query, search_limit=8)[1]
     except SourceError as youtube_error:
+        if source == 'youtube':
+            raise
         logging.getLogger(__name__).warning('YouTube search unavailable; trying SoundCloud')
         try:
             tracks = soundcloud_search(query)

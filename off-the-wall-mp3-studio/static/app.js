@@ -125,7 +125,7 @@ function setMode(next) {
   $('#query').placeholder = {link:'Enlace de YouTube, SoundCloud, Spotify o Deezer',search:'Artista — nombre de la canción',playlist:'Enlace de una playlist o álbum público'}[next];
   $('#query').value = ''; $('#form-error').hidden = true;
   $('#submit-button').innerHTML = `${next === 'search' ? 'Buscar canción' : 'Convertir a MP3'}${icon(next === 'search' ? 'search' : 'arrow')}`;
-  $('#search-section').hidden = true; $('#query').focus();
+  $('#search-section').hidden = true; $('#search-provider-row').hidden = next !== 'search'; $('#query').focus();
 }
 function trackRow(track, job, index, library = false) {
   const ready = track.status === 'completed';
@@ -187,37 +187,49 @@ $('#convert-form').addEventListener('submit', async (event) => {
     savePreferences();
     if (mode === 'search') {
       closePreview();
-      const data = await api('/api/search', {method:'POST', body:JSON.stringify({query})}); results = data.tracks;
-      $('#search-results').innerHTML = results.length ? results.map((track,index) => `<div class="track-row search-row">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist)} · ${duration(track.duration)} · ${escapeHTML(track.source)}</small></div><div class="track-buttons">${track.preview_url ? `<button class="secondary" data-preview="${index}" aria-label="Vista previa de ${escapeHTML(track.title)}">▶ Vista previa</button>` : ''}<button class="secondary" data-result="${index}">${icon('convert')} Convertir</button></div></div>`).join('') : empty('No encontramos esta canción','Prueba una búsqueda con el nombre del artista y de la canción.');
+      const data = await api('/api/search', {method:'POST', body:JSON.stringify({query, source:$('#search-provider').value})}); results = data.tracks;
+      $('#search-results').innerHTML = results.length ? results.map((track,index) => `<div class="track-row search-row" data-search-row="${index}">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist)} · ${duration(track.duration)} · ${escapeHTML(track.source)}</small></div><div class="track-buttons">${track.preview_url ? `<button class="secondary" data-preview="${index}" aria-label="Vista previa de ${escapeHTML(track.title)}" aria-expanded="false" aria-controls="inline-preview-${index}">▶ Vista previa</button>` : ''}<button class="secondary" data-result="${index}">${icon('convert')} Convertir</button></div><div class="inline-preview" id="inline-preview-${index}" hidden></div></div>`).join('') : empty('No encontramos esta canción','Prueba una búsqueda con el nombre del artista y de la canción.');
       $('#search-count').textContent = `${results.length} resultados`; $('#search-section').hidden = false;
     } else { await createJob(query,mode === 'playlist'); $('#query').value = ''; }
   } catch (error) { $('#form-error').textContent = error.message; $('#form-error').hidden = false; }
   finally { $('#submit-button').disabled = false; $('#submit-button').innerHTML = label; }
 });
+let activePreview = null;
 function closePreview() {
-  $('#preview-player').replaceChildren();
-  if ($('#preview-dialog').open) $('#preview-dialog').close();
+  $$('.inline-preview').forEach(panel => { panel.replaceChildren(); panel.hidden = true; });
+  $$('[data-preview]').forEach(button => { button.setAttribute('aria-expanded','false'); button.textContent = '▶ Vista previa'; });
+  activePreview = null;
 }
 function showPreview(index) {
+  if (activePreview === index) { closePreview(); return; }
   const track = results[index];
   if (!track?.preview_url) return;
   let url;
   try { url = new URL(track.preview_url); } catch { return; }
   if (url.protocol !== 'https:' || !['www.youtube.com','w.soundcloud.com'].includes(url.hostname)) return;
   closePreview();
-  $('#preview-description').textContent = `${track.title} · ${track.artist || 'Artista sin identificar'} · ${track.source}`;
-  $('#preview-source').href = track.source_url;
+  const panel = $(`#inline-preview-${index}`);
+  if (!panel) return;
   const player = document.createElement('iframe');
   player.src = url.href;
   player.title = `Reproducir vista previa de ${track.title}`;
   player.className = track.source === 'soundcloud' ? 'preview-frame soundcloud-preview' : 'preview-frame';
   player.allow = 'autoplay; encrypted-media; fullscreen';
   player.referrerPolicy = 'strict-origin-when-cross-origin';
-  $('#preview-player').append(player);
-  $('#preview-dialog').showModal();
+  panel.append(player);
+  if (track.source === 'youtube') {
+    const note = document.createElement('p');
+    note.className = 'preview-note';
+    note.textContent = 'YouTube no ofrece forma de onda. Busca en SoundCloud para escuchar con forma de onda.';
+    panel.append(note);
+  }
+  panel.hidden = false;
+  const button = $(`[data-preview="${index}"]`);
+  button.setAttribute('aria-expanded','true');
+  button.textContent = '■ Cerrar vista previa';
+  activePreview = index;
 }
-$('#preview-dialog').addEventListener('close', () => $('#preview-player').replaceChildren());
-$('#preview-dialog').addEventListener('cancel', closePreview);
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closePreview(); });
 function showDetails(job,index) {
   const track = job.tracks[index]; if (!track) return;
   $('#track-detail').innerHTML = `<div class="detail-intro">${artwork(track)}<div><h3>${escapeHTML(track.title)}</h3><p>${escapeHTML(track.artist || 'Artista sin identificar')}</p></div></div><dl class="detail-grid"><dt>Álbum</dt><dd>${escapeHTML(track.album || 'Sin identificar')}</dd><dt>Género</dt><dd>${escapeHTML(track.genre || 'Sin identificar')}</dd><dt>Año</dt><dd>${escapeHTML(track.year || '—')}</dd><dt>Duración</dt><dd>${duration(track.duration)}</dd><dt>Calidad</dt><dd>MP3 · ${job.options.bitrate} kbps</dd><dt>Origen</dt><dd>${escapeHTML(track.source)}${track.audio_source_url ? ' · audio equivalente en ' + escapeHTML(track.audio_source_provider || 'youtube') : ''}</dd><dt>Estado</dt><dd>${names[track.status]}</dd></dl>${track.status === 'completed' ? `<audio class="detail-audio" controls preload="none" src="/api/jobs/${job.id}/tracks/${index}/download"></audio>` : ''}${track.error ? `<div class="form-error">${escapeHTML(track.error)}</div>` : ''}${track.warnings?.length ? `<div class="info-box">${track.warnings.map(escapeHTML).join('<br>')}</div>` : ''}<div class="lyrics">${escapeHTML(track.lyrics || 'No hay letras disponibles para esta canción.')}</div>`;
