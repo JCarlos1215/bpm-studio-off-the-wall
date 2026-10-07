@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Analizador DJ — BPM Studio</title>
-  <link rel="stylesheet" href="./style.css?v=transparency-20261006">
+  <link rel="stylesheet" href="./style.css?v=camelot-20261007">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
@@ -46,6 +46,21 @@
         <strong><span id="energy-result">—</span><small>/ 100</small></strong>
         <span id="energy-detail" class="result-detail">Intensidad relativa</span>
       </article>
+    </section>
+
+    <section class="panel camelot-panel" aria-labelledby="camelot-heading">
+      <div>
+        <p class="eyebrow">MEZCLA ARMÓNICA</p>
+        <h2 id="camelot-heading">Rueda de Camelot</h2>
+        <p class="muted">Selecciona una tonalidad para explorar combinaciones. Al analizar una pista, su tonalidad se marca automáticamente.</p>
+        <div class="camelot-selection" aria-live="polite">
+          <strong id="camelot-selected">Selecciona una tonalidad</strong>
+          <p id="camelot-compatible" class="muted">Mezcla con el mismo código, los números vecinos o la misma cifra en el otro anillo.</p>
+        </div>
+        <p class="camelot-legend"><span class="selected-dot"></span> Seleccionada <span class="compatible-dot"></span> Compatible</p>
+        <p class="muted">Anillo interior A: menor · Anillo exterior B: mayor.<br>Las combinaciones son orientativas: escucha y ajusta el tempo.</p>
+      </div>
+      <svg id="camelot-wheel" viewBox="0 0 500 500" role="group" aria-label="Rueda interactiva de las 24 tonalidades Camelot"></svg>
     </section>
 
     <section class="panel cues-panel" aria-labelledby="cues-heading">

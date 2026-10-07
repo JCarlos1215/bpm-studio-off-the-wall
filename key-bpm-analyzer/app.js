@@ -1,4 +1,5 @@
 import { analyzeAudioBuffer, formatTime } from './analysis.js';
+import { selectCamelot } from './camelot.js';
 
 if (new URLSearchParams(window.location.search).has('embed')) {
   document.documentElement.classList.add('embedded');
@@ -61,6 +62,7 @@ fileInput.addEventListener('change', async () => {
   progress.hidden = true;
   document.querySelector('#key-result').textContent = '—';
   document.querySelector('#camelot-result').textContent = 'Camelot —';
+  selectCamelot(null);
   document.querySelector('#bpm-result').textContent = '—';
   document.querySelector('#bpm-detail').textContent = 'Análisis automático';
   document.querySelector('#energy-result').textContent = '—';
@@ -100,6 +102,7 @@ fileInput.addEventListener('change', async () => {
 
     document.querySelector('#key-result').textContent = `${result.key} ${result.mode}`;
     document.querySelector('#camelot-result').textContent = `Camelot ${result.camelot}`;
+    selectCamelot(result.camelot);
     document.querySelector('#bpm-result').textContent = String(result.bpm);
     document.querySelector('#bpm-detail').textContent = `Estimación · ${result.bpmConfidence}`;
     document.querySelector('#energy-result').textContent = String(result.energy);
