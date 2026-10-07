@@ -93,3 +93,14 @@ El iframe activo (`mp3Frame` en `index.html`) utiliza `https://jcarlos1215-bpm-s
 El flujo conserva la arquitectura de AllToMP3: SoundCloud se extrae desde su enlace; Spotify resuelve metadatos (API o embed público) y busca audio equivalente en YouTube. El archivo no procede del audio protegido de Spotify y puede corresponder a otra versión. Se instala `yt-dlp[default]` para mantener compatibles los componentes EJS. `/api/status` expone sus versiones y la disponibilidad de Node.js 22 o posterior.
 
 GitHub Pages sirve la rama `main`; el backend Render está conectado a `master`. Ambas ramas deben contener las correcciones. Después de desplegar, comprueba `/api/status` y una conversión desde la IP de Render: la extracción local no demuestra que YouTube acepte solicitudes del servidor.
+
+### Separador de stems en línea
+
+La pestaña **Separador de stems** integra mediante iframe el servicio público
+[TheStinger/UVR5_UI](https://huggingface.co/spaces/TheStinger/UVR5_UI) en Hugging Face.
+Se carga al abrir la pestaña. El audio seleccionado se sube al proveedor externo;
+GitHub Pages no ejecuta el modelo ni almacena el audio. BS-Roformer-Viperx-1297
+permite separar voz e instrumental; HTDemucs FT permite cuatro stems y HTDemucs 6s
+seis. Hay instrucciones de selección y un enlace externo para Safari o problemas
+de autenticación y descarga dentro del iframe. El servicio puede requerir una
+cuenta, imponer cuotas de GPU o tener colas; la calidad depende del material.
