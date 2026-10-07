@@ -86,3 +86,10 @@ consulta sus límites y detalles en [`key-bpm-analyzer/README.md`](key-bpm-analy
 - Logo de usuario: fuera de licencia GPL
 
 > **Nota**: Download Manager requiere el servidor Python local. La conversión de archivos del navegador permanece en este dispositivo.
+### Reparación de Download Manager (6 de octubre de 2026)
+
+El iframe público utiliza `https://jcarlos1215-bpm-studio-off-the-wall-mp3.onrender.com`, el backend incluido en este repositorio. `descargador-pro-co95.onrender.com` es otra aplicación y no implementa esta cola de trabajos. En localhost el iframe utiliza el puerto 8093 que levanta el iniciador.
+
+El flujo conserva la arquitectura de AllToMP3: SoundCloud se extrae desde su enlace; Spotify resuelve metadatos (API o embed público) y busca audio equivalente en YouTube. El archivo no procede del audio protegido de Spotify y puede corresponder a otra versión. Se instala `yt-dlp[default]` para mantener compatibles los componentes EJS. `/api/status` expone sus versiones y la disponibilidad de Node.js 22 o posterior.
+
+GitHub Pages sirve la rama `main`; el backend Render está conectado a `master`. Ambas ramas deben contener las correcciones. Después de desplegar, comprueba `/api/status` y una conversión desde la IP de Render: la extracción local no demuestra que YouTube acepte solicitudes del servidor.

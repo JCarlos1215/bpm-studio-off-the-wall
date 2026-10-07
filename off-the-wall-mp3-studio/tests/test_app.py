@@ -47,12 +47,18 @@ def audio_fixture(path):
         output.writeframes(b''.join(struct.pack('<h', int(4000 * math.sin(2 * math.pi * 440 * t / 44100))) for t in range(44100)))
 
 
-def mock_source(monkeypatch, tmp_path, count=2):
+def mock_source(monkeypatch, tmp_path, count=2, provider="youtube"):
     fixture = tmp_path / 'test.wav'
     audio_fixture(fixture)
     track = {'title':'Prueba', 'artist':'Estudio', 'duration':1, 'album':'Sesiones',
              'genre':'Ambient', 'year':'2026', 'track_number':1, 'cover':'',
              'source':'youtube', 'source_url':'https://www.youtube.com/watch?v=fixture'}
+    track['source'] = provider
+    if provider == 'soundcloud':
+        track['source_url'] = 'https://soundcloud.com/studio/fixture'
+    elif provider == 'spotify':
+        track['source_url'] = 'https://open.spotify.com/track/fixture'
+        monkeypatch.setattr(providers, 'extract_online', lambda *_: ('Prueba', [{'source_url': 'https://www.youtube.com/watch?v=fixture'}]))
     monkeypatch.setattr(providers, 'resolve', lambda *_: ('Playlist de prueba', [copy.deepcopy(track) for _ in range(count)]))
     monkeypatch.setattr(providers, 'enrich', lambda track, lyrics: (track.update(lyrics='Letra de prueba original') or []))
 
@@ -76,8 +82,9 @@ def mock_source(monkeypatch, tmp_path, count=2):
     monkeypatch.setattr(engine, 'YoutubeDL', Downloader)
 
 
-def test_conversion_tag_download_zip_and_persistence(app, tmp_path, monkeypatch):
-    mock_source(monkeypatch, tmp_path)
+@pytest.mark.parametrize("provider", ["youtube", "soundcloud", "spotify"])
+def test_conversion_tag_download_zip_and_persistence(app, tmp_path, monkeypatch, provider):
+    mock_source(monkeypatch, tmp_path, provider=provider)
     client = app.test_client()
     response = client.post('/api/jobs', headers=HEADERS, json={'query':'https://www.youtube.com/playlist?list=fixture', 'options':{'playlist':True,'bitrate':256}})
     assert response.status_code == 202
