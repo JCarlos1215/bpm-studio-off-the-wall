@@ -21,7 +21,7 @@ function showTempo(result){
 function clearReadings(){tracker.reset();sessionPeak=0;seconds=0;lastRms=0;previousRms=0;beat=0;lastBeat=0;$('peak').textContent='−∞';$('rms').textContent='0.000';$('inputDb').textContent='−∞';$('frequency').textContent='—';$('duration').textContent='00:00';$('levelFill').style.width='0%';$('clipLabel').textContent='Máximo desde el inicio';$('clipLabel').style.color='';showTempo(null);document.querySelectorAll('.beat-row span').forEach(x=>x.classList.remove('on'));if(!running){$('stability').textContent='Sin análisis';$('tempoHint').textContent='Activa el micrófono para encontrar el tempo.';}controls();}
 function receive(batch){
   if(!running||trackMuted)return;
-  for(const sample of batch){seconds+=Math.round(context.sampleRate/100)/context.sampleRate;sessionPeak=Math.max(sessionPeak,sample.peak);const result=tracker.push(sample.rms,Number($('sensitivity').value));if(result!==undefined)showTempo(result);}
+  for(const sample of batch){seconds+=Math.round(context.sampleRate/100)/context.sampleRate;sessionPeak=Math.max(sessionPeak,sample.peak);const result=tracker.push(sample.beatRms ?? sample.rms,Number($('sensitivity').value));if(result!==undefined)showTempo(result);}
   lastRms=Math.sqrt(batch.reduce((sum,s)=>sum+s.rms*s.rms,0)/batch.length);
   $('rms').textContent=lastRms.toFixed(3);$('inputDb').textContent=dbText(db(lastRms));$('peak').textContent=dbText(db(sessionPeak));$('clipLabel').textContent=sessionPeak>=.99?'Saturación detectada · baja la entrada':'Máximo desde el inicio';$('clipLabel').style.color=sessionPeak>=.99?'#ffad96':'';
   $('levelFill').style.width=`${Math.min(100,Math.max(0,(db(lastRms)+60)/60*100))}%`;

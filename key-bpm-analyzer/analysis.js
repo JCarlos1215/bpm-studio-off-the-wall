@@ -1,3 +1,4 @@
+import { estimateBeat } from '../beat-analysis.js';
 const SAMPLE_RATE = 11025;
 const ENVELOPE_RATE = 100;
 const FFT_SIZE = 8192;
@@ -17,54 +18,60 @@ function downsample(buffer) {
   const mono = new Float32Array(length);
   const ratio = buffer.sampleRate / SAMPLE_RATE;
   for (let i = 0; i < length; i += 1) {
-    const sourceIndex = Math.min(buffer.length - 1, Math.round(i * ratio));
+    const start = Math.floor(i * ratio);
+    const end = Math.min(buffer.length, Math.max(start + 1, Math.floor((i + 1) * ratio)));
     let sample = 0;
-    for (const channel of channels) sample += channel[sourceIndex];
-    mono[i] = sample / channels.length;
+    for (const channel of channels) {
+      for (let j = start; j < end; j++) sample += channel[j];
+    }
+    mono[i] = sample / ((end - start) * channels.length);
   }
   return mono;
 }
 
-function getEnvelope(samples) {
-  const blockSize = Math.max(1, Math.round(SAMPLE_RATE / ENVELOPE_RATE));
-  const rms = new Float32Array(Math.ceil(samples.length / blockSize));
-  for (let frame = 0; frame < rms.length; frame += 1) {
-    const start = frame * blockSize;
-    const end = Math.min(samples.length, start + blockSize);
-    let sum = 0;
-    for (let i = start; i < end; i += 1) sum += samples[i] * samples[i];
-    rms[frame] = Math.sqrt(sum / (end - start));
+function getEnvelope(buffer) {
+  const channels = Array.from({length: buffer.numberOfChannels}, (_, i) => buffer.getChannelData(i));
+  const frames = Math.ceil(buffer.duration * ENVELOPE_RATE);
+  const rms = new Float32Array(frames);
+  const onset = new Float32Array(frames);
+  const low = new Float64Array(channels.length);
+  const alpha = 1 - Math.exp(-2 * Math.PI * 180 / buffer.sampleRate);
+  let previous = 0;
+  for (let frame = 0; frame < frames; frame++) {
+    const start = Math.round(frame * buffer.sampleRate / ENVELOPE_RATE);
+    const end = Math.min(buffer.length, Math.round((frame + 1) * buffer.sampleRate / ENVELOPE_RATE));
+    let sum = 0, bass = 0;
+    for (let c = 0; c < channels.length; c++) {
+      for (let i = start; i < end; i++) {
+        const value = channels[c][i];
+        sum += value * value;
+        low[c] += alpha * (value - low[c]);
+        bass += low[c] * low[c];
+      }
+    }
+    const count = Math.max(1, (end - start) * channels.length);
+    rms[frame] = Math.sqrt(sum / count);
+    const energy = Math.log1p(Math.sqrt(bass / count) * 100);
+    onset[frame] = Math.max(0, energy - previous);
+    previous = energy;
   }
-
-  const onset = new Float32Array(rms.length);
-  for (let i = 2; i < rms.length; i += 1) {
-    const baseline = (rms[i - 1] + rms[i - 2]) / 2;
-    onset[i] = Math.max(0, rms[i] - baseline);
-  }
-  const onsetMean = mean(onset);
-  for (let i = 0; i < onset.length; i += 1) onset[i] = Math.max(0, onset[i] - onsetMean * 0.5);
-  return { rms, onset };
+  return {rms, onset};
 }
 
 function estimateTempo(onset) {
-  if (onset.length < ENVELOPE_RATE * 5) return { bpm: 0, confidence: 'baja' };
-  const candidates = [];
-  for (let bpm = 60; bpm <= 180; bpm += 1) {
-    const lag = Math.round(ENVELOPE_RATE * 60 / bpm);
-    let score = 0;
-    let norm = 0;
-    for (let i = lag; i < onset.length; i += 1) {
-      score += onset[i] * onset[i - lag];
-      norm += onset[i] * onset[i];
-    }
-    candidates.push({ bpm, score: score / (norm + 1e-12) });
+  const estimates = [];
+  const length = Math.min(onset.length, 1600);
+  for (const fraction of [0, .5, 1]) {
+    const start = Math.floor((onset.length - length) * fraction);
+    const result = estimateBeat(onset.subarray(start, start + length));
+    if (result) estimates.push(result);
   }
-  candidates.sort((a, b) => b.score - a.score);
-  const best = candidates[0];
-  const runnerUp = candidates.find(item => Math.abs(item.bpm - best.bpm) > 3);
-  const bpm = best.bpm > 125 && best.score < 0.35 ? Math.round(best.bpm / 2) : best.bpm;
-  const ratio = runnerUp?.score ? best.score / runnerUp.score : 1;
-  return { bpm, confidence: best.score < 0.08 ? 'baja' : ratio > 1.18 ? 'alta' : 'media' };
+  if (!estimates.length) return {bpm: null, confidence: 'sin pulso fiable'};
+  estimates.sort((a, b) => b.confidence - a.confidence);
+  const best = estimates[0];
+  const agree = estimates.filter(e => Math.abs(e.bpm - best.bpm) < 2);
+  return {bpm: Math.round(mean(agree.map(e => e.bpm)) * 10) / 10,
+    confidence: best.confidence >= 75 && agree.length >= 2 ? 'alta' : best.confidence >= 50 ? 'media' : 'baja'};
 }
 
 function fft(real, imag) {
@@ -154,7 +161,9 @@ function estimateKey(samples, onProgress) {
     scores.push({ root, mode: 'menor', score: correlate(chroma, minor), camelot: `${CAMELOT_MINOR[root]}A` });
   }
   scores.sort((a, b) => b.score - a.score);
-  return { ...scores[0], name: NOTE_NAMES[scores[0].root] };
+  const best = scores[0];
+  if (mean(chroma) < 1e-5 || best.score < .45 || best.score - scores[1].score < .025) return {name: null, mode: '', camelot: null};
+  return { ...best, name: NOTE_NAMES[best.root] };
 }
 
 function smooth(values, radius) {
@@ -226,13 +235,13 @@ export function analyzeAudioBuffer(buffer, onProgress) {
   }
   const samples = downsample(buffer);
   onProgress?.(5);
-  const { rms, onset } = getEnvelope(samples);
+  const { rms, onset } = getEnvelope(buffer);
   const tempo = estimateTempo(onset);
   const key = estimateKey(samples, onProgress);
   onProgress?.(90);
   const averageEnergy = Math.sqrt(mean(Array.from(rms, value => value * value)));
-  const energy = Math.max(0, Math.min(100, Math.round(100 * Math.sqrt(averageEnergy / 0.22))));
-  const cues = suggestCues(rms, buffer.duration);
+  const energy = Math.max(0, Math.min(100, Math.round((20 * Math.log10(averageEnergy || 1e-12) + 60) / 60 * 100)));
+  const cues = averageEnergy > 1e-5 ? suggestCues(rms, buffer.duration) : [];
   onProgress?.(100);
 
   return {

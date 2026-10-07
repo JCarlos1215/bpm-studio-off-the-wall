@@ -66,7 +66,7 @@ fileInput.addEventListener('change', async () => {
   document.querySelector('#bpm-result').textContent = '—';
   document.querySelector('#bpm-detail').textContent = 'Análisis automático';
   document.querySelector('#energy-result').textContent = '—';
-  document.querySelector('#energy-detail').textContent = 'Intensidad relativa';
+  document.querySelector('#energy-detail').textContent = 'Nivel RMS normalizado';
   renderCues([]);
   if (file.size > 150 * 1024 * 1024) {
     setStatus('El archivo supera el límite local de 150 MB. Selecciona un archivo más pequeño.', 'error');
@@ -105,13 +105,13 @@ fileInput.addEventListener('change', async () => {
     });
     if (id !== runId) return;
 
-    document.querySelector('#key-result').textContent = `${result.key} ${result.mode}`;
-    document.querySelector('#camelot-result').textContent = `Camelot ${result.camelot}`;
+    document.querySelector('#key-result').textContent = result.key ? `${result.key} ${result.mode}` : 'No concluyente';
+    document.querySelector('#camelot-result').textContent = result.camelot ? `Camelot ${result.camelot}` : 'Sin tonalidad fiable';
     selectCamelot(result.camelot);
-    document.querySelector('#bpm-result').textContent = String(result.bpm);
+    document.querySelector('#bpm-result').textContent = result.bpm === null ? '—' : String(result.bpm);
     document.querySelector('#bpm-detail').textContent = `Estimación · ${result.bpmConfidence}`;
     document.querySelector('#energy-result').textContent = String(result.energy);
-    document.querySelector('#energy-detail').textContent = 'Intensidad relativa de esta pista';
+    document.querySelector('#energy-detail').textContent = 'Nivel RMS normalizado · no mide energía musical';
     renderCues(result.cues);
     progress.value = 100;
     setStatus(`Análisis terminado · ${formatTime(buffer.duration)} · procesado en este dispositivo.`, 'success');
