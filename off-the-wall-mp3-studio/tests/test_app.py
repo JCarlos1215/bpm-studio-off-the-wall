@@ -95,6 +95,11 @@ def test_conversion_tag_download_zip_and_persistence(app, tmp_path, monkeypatch,
     job = wait_for(store, identifier)
     assert job['status'] == 'completed', job
     assert len(job['tracks']) == 2
+    envelope = job['tracks'][0]['waveform']
+    assert len(envelope['peaks']) == 700
+    assert all(0 <= value <= 1 for value in envelope['peaks'])
+    assert max(envelope['peaks']) > .05
+    assert abs(envelope['duration'] - 1) < .1
     path, name = store.track_file(identifier,0)
     mp3 = MP3(path)
     assert abs(mp3.info.bitrate - 256000) < 4000
@@ -287,3 +292,33 @@ def test_search_includes_preview_without_downloading_audio(app, monkeypatch):
     policy = response.headers['Content-Security-Policy']
     assert 'frame-src https://www.youtube.com https://w.soundcloud.com;' in policy
     assert "media-src 'self' blob:;" in policy
+
+
+@pytest.mark.parametrize('provider', ['youtube', 'soundcloud'])
+def test_search_reuses_completed_audio_waveform(app, tmp_path, monkeypatch, provider):
+    mock_source(monkeypatch, tmp_path, count=1, provider=provider)
+    client = app.test_client()
+    url = 'https://soundcloud.com/studio/fixture' if provider == 'soundcloud' else 'https://www.youtube.com/watch?v=fixture'
+    response = client.post('/api/jobs', headers=HEADERS, json={'query':url, 'options':{'tags':False}})
+    store = app.extensions['jobs']
+    job = wait_for(store, response.json['job']['id'])
+    monkeypatch.setattr(providers, 'search', lambda *args, **kwargs: [{'title':'Prueba', 'source':provider, 'source_url':url}])
+    response = client.post('/api/search', headers=HEADERS, json={'query':'Prueba', 'source':provider})
+    result = response.json['tracks'][0]
+    assert result['waveform'] == job['tracks'][0]['waveform']
+    assert result['preview_job'] == job['id']
+    assert result['preview_index'] == 0
+    assert len(store.list()) == 1
+
+
+def test_waveform_preserves_silence_and_signal_positions(tmp_path):
+    path = tmp_path / 'envelope.wav'
+    with wave.open(str(path), 'wb') as output:
+        output.setnchannels(1)
+        output.setsampwidth(2)
+        output.setframerate(8000)
+        output.writeframes(b'\x00\x00' * 8000 + struct.pack('<h', 8000) * 8000)
+    data = engine.audio_waveform(path, count=20)
+    assert data['duration'] == 2
+    assert max(data['peaks'][:9]) == 0
+    assert min(data['peaks'][11:]) > .2

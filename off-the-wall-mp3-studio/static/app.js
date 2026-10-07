@@ -128,10 +128,25 @@ function setMode(next) {
   $('#submit-button').innerHTML = `${next === 'search' ? 'Buscar canción' : 'Convertir a MP3'}${icon(next === 'search' ? 'search' : 'arrow')}`;
   $('#search-section').hidden = true; $('#search-provider-row').hidden = next !== 'search'; $('#query').focus();
 }
+const waveformCache = new Map();
+try { for (const [url, data] of JSON.parse(localStorage.getItem('bpm-waveforms') || '[]')) waveformCache.set(url,data); } catch {}
+function rememberWaveform(track, data) {
+  if (!track.source_url) return;
+  waveformCache.delete(track.source_url); waveformCache.set(track.source_url,data);
+  while (waveformCache.size > 40) waveformCache.delete(waveformCache.keys().next().value);
+  try { localStorage.setItem('bpm-waveforms',JSON.stringify([...waveformCache])); } catch {}
+}
+function waveformThumb(track) {
+  const data = track.waveform || waveformCache.get(track.source_url);
+  if (!data?.peaks?.length) return '<div class="waveform-pending">Onda pendiente de preparar el audio</div>';
+  const maximum = Math.max(...data.peaks) || 1, count = data.peaks.length;
+  const bars = data.peaks.map((peak,i) => { const h = Math.max(2, Number(peak) / maximum * 70); return `<rect x="${i*1400/count}" y="${(80-h)/2}" width="${1400/count*.75}" height="${h}"/>`; }).join('');
+  return `<div class="waveform-thumbnail"><svg viewBox="0 0 1400 80" preserveAspectRatio="none" role="img" aria-label="Forma de onda del audio real">${bars}</svg></div>`;
+}
 function trackRow(track, job, index, library = false) {
   const ready = track.status === 'completed';
   const status = ready ? `${duration(track.duration)} · ${job.options.bitrate} kbps` : names[track.status] || track.status;
-  return `<div class="track-row ${library ? 'library-track' : ''}">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist || 'Artista sin identificar')}${library && track.album ? ' · ' + escapeHTML(track.album) : ''}</small></div><div class="track-status ${track.status === 'failed' ? 'error' : ''}">${track.status === 'failed' ? escapeHTML(track.error) : escapeHTML(status)}${!terminal.has(track.status) ? `<div class="progress"><div class="progress-fill" data-progress="${Math.max(0,Math.min(100,track.progress || 0))}"></div></div>` : ''}</div><div class="track-buttons"><button class="track-detail-button" data-action="detail" data-job="${job.id}" data-index="${index}">Detalles</button>${ready ? `<button class="secondary" data-waveform="${job.id}:${index}">▶ Forma de onda</button><a class="secondary" href="/api/jobs/${job.id}/tracks/${index}/download" aria-label="Descargar ${escapeHTML(track.title)}">${icon('download')}<span>MP3</span></a>` : ''}</div></div>`;
+  return `<div class="track-row ${library ? 'library-track' : ''}">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist || 'Artista sin identificar')}${library && track.album ? ' · ' + escapeHTML(track.album) : ''}</small></div><div class="track-status ${track.status === 'failed' ? 'error' : ''}">${track.status === 'failed' ? escapeHTML(track.error) : escapeHTML(status)}${!terminal.has(track.status) ? `<div class="progress"><div class="progress-fill" data-progress="${Math.max(0,Math.min(100,track.progress || 0))}"></div></div>` : ''}</div><div class="track-buttons"><button class="track-detail-button" data-action="detail" data-job="${job.id}" data-index="${index}">Detalles</button>${ready ? `<button class="secondary" data-waveform="${job.id}:${index}">▶ Forma de onda</button><a class="secondary" href="/api/jobs/${job.id}/tracks/${index}/download" aria-label="Descargar ${escapeHTML(track.title)}">${icon('download')}<span>MP3</span></a>` : ''}</div>${ready ? waveformThumb(track) : ''}</div>`;
 }
 function jobCard(job) {
   const done = job.tracks.filter(t => t.status === 'completed').length;
@@ -197,7 +212,7 @@ $('#convert-form').addEventListener('submit', async (event) => {
     if (mode === 'search') {
       closePreview();
       const data = await api('/api/search', {method:'POST', body:JSON.stringify({query, source:$('#search-provider').value})}); results = data.tracks;
-      $('#search-results').innerHTML = results.length ? results.map((track,index) => `<div class="track-row search-row" data-search-row="${index}">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist)} · ${duration(track.duration)} · ${escapeHTML(track.source)}</small></div><div class="track-buttons">${track.source_url ? `<button class="secondary" data-preview="${index}" aria-label="Vista previa de ${escapeHTML(track.title)}" aria-expanded="false" aria-controls="inline-preview-${index}">▶ Vista previa</button>` : ''}<button class="secondary" data-result="${index}">${icon('convert')} Convertir</button></div><div class="inline-preview" id="inline-preview-${index}" hidden></div></div>`).join('') : empty('No encontramos esta canción','Prueba una búsqueda con el nombre del artista y de la canción.');
+      $('#search-results').innerHTML = results.length ? results.map((track,index) => `<div class="track-row search-row" data-search-row="${index}">${artwork(track)}<div class="track-info"><b>${escapeHTML(track.title)}</b><small>${escapeHTML(track.artist)} · ${duration(track.duration)} · ${escapeHTML(track.source)}</small></div><div class="track-buttons">${track.source_url ? `<button class="secondary" data-preview="${index}" aria-label="Vista previa de ${escapeHTML(track.title)}" aria-expanded="false" aria-controls="inline-preview-${index}">▶ Vista previa</button>` : ''}<button class="secondary" data-result="${index}">${icon('convert')} Convertir</button></div>${waveformThumb(track)}<div class="inline-preview" id="inline-preview-${index}" hidden></div></div>`).join('') : empty('No encontramos esta canción','Prueba una búsqueda con el nombre del artista y de la canción.');
       $('#search-count').textContent = `${results.length} resultados`; $('#search-section').hidden = false;
     } else { await createJob(query,mode === 'playlist'); $('#query').value = ''; }
   } catch (error) { $('#form-error').textContent = error.message; $('#form-error').hidden = false; }
@@ -217,32 +232,51 @@ function closePreview() {
 }
 async function mountWaveform(panel, job, index, generation) {
   panel.textContent = 'Cargando forma de onda del audio…';
-  const headers = {};
-  if (serverPassword) headers.Authorization = `Basic ${btoa(`bpmstudio:${serverPassword}`)}`;
-  const response = await fetch(`/api/jobs/${job.id}/tracks/${index}/download`, {headers});
-  if (!response.ok) throw new Error('No se pudo cargar el audio para la vista previa.');
-  const bytes = await response.arrayBuffer();
-  if (generation !== previewGeneration) return;
-  const context = new AudioContext();
-  let decoded;
-  try { decoded = await context.decodeAudioData(bytes.slice(0)); } finally { await context.close(); }
-  if (generation !== previewGeneration) return;
-  const count = 700, peaks = new Float32Array(count);
-  for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
-    const samples = decoded.getChannelData(channel);
-    for (let bin = 0; bin < count; bin++) {
-      const begin = Math.floor(bin * samples.length / count), end = Math.floor((bin + 1) * samples.length / count);
-      for (let sample = begin; sample < end; sample++) peaks[bin] = Math.max(peaks[bin], Math.abs(samples[sample]));
+  const track = job.tracks[index];
+  let data = track.waveform || waveformCache.get(track.source_url), bytes = null;
+  if (!data?.peaks?.length) {
+    const headers = {};
+    if (serverPassword) headers.Authorization = `Basic ${btoa(`bpmstudio:${serverPassword}`)}`;
+    const response = await fetch(`/api/jobs/${job.id}/tracks/${index}/download`, {headers});
+    if (!response.ok) throw new Error('No se pudo cargar el audio para la vista previa.');
+    bytes = await response.arrayBuffer();
+    if (generation !== previewGeneration) return;
+    const context = new AudioContext();
+    let decoded;
+    try { decoded = await context.decodeAudioData(bytes.slice(0)); } finally { await context.close(); }
+    const peaks = new Float32Array(700);
+    for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
+      const samples = decoded.getChannelData(channel);
+      for (let bin = 0; bin < peaks.length; bin++) {
+        const begin = Math.floor(bin * samples.length / peaks.length), end = Math.floor((bin + 1) * samples.length / peaks.length);
+        for (let sample = begin; sample < end; sample++) peaks[bin] = Math.max(peaks[bin], Math.abs(samples[sample]));
+      }
     }
+    data = {peaks:Array.from(peaks),duration:decoded.duration};
   }
+  if (generation !== previewGeneration) return;
+  track.waveform = data;
+  rememberWaveform(track,data);
+  const thumbnail = panel.parentElement.querySelector('.waveform-thumbnail,.waveform-pending');
+  if (thumbnail) thumbnail.outerHTML = waveformThumb(track);
+  const peaks = data.peaks, count = peaks.length, decoded = {duration:data.duration};
   const maximum = Math.max(...peaks) || 1;
   const canvas = document.createElement('canvas');
   canvas.className = 'audio-waveform'; canvas.width = 1400; canvas.height = 160;
   canvas.setAttribute('role','slider'); canvas.tabIndex = 0;
   canvas.setAttribute('aria-label','Posición de reproducción en la forma de onda');
   canvas.setAttribute('aria-valuemin','0'); canvas.setAttribute('aria-valuemax', String(Math.floor(decoded.duration)));
-  const audio = document.createElement('audio'); audio.controls = true; audio.className = 'waveform-controls';
-  waveformBlob = URL.createObjectURL(new Blob([bytes], {type:'audio/mpeg'})); audio.src = waveformBlob;
+  const audio = document.createElement('audio'); audio.controls = false; audio.className = 'waveform-controls'; audio.hidden = true;
+  if (bytes || serverPassword) {
+    if (!bytes) {
+      const response = await fetch(`/api/jobs/${job.id}/tracks/${index}/download`, {headers:{Authorization:`Basic ${btoa(`bpmstudio:${serverPassword}`)}`}});
+      if (!response.ok) throw new Error('No se pudo cargar el audio.');
+      bytes = await response.arrayBuffer();
+      if (generation !== previewGeneration) return;
+    }
+    waveformBlob = URL.createObjectURL(new Blob([bytes], {type:'audio/mpeg'})); audio.src = waveformBlob;
+  } else audio.src = `/api/jobs/${job.id}/tracks/${index}/download`;
+  audio.preload = 'metadata';
   waveformAudio = audio;
   const clock = document.createElement('span'); clock.className = 'waveform-time';
   function draw() {
@@ -250,10 +284,10 @@ async function mountWaveform(panel, job, index, generation) {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     peaks.forEach((value, bin) => {
       const height = Math.max(2, value / maximum * 145);
-      ctx.fillStyle = bin / count <= progress ? '#2ac6e2' : '#438b95';
+      ctx.fillStyle = bin / count <= progress ? '#65b6ff' : '#497f9f';
       ctx.fillRect(bin * 2, (160 - height) / 2, 1.5, height);
     });
-    clock.textContent = `${duration(audio.currentTime)} / ${duration(decoded.duration)}`;
+    clock.textContent = `${audio.currentTime ? duration(audio.currentTime) : '0:00'} / ${duration(decoded.duration)}`;
     canvas.setAttribute('aria-valuenow', String(Math.floor(audio.currentTime)));
   }
   canvas.addEventListener('click', event => { const rect = canvas.getBoundingClientRect(); audio.currentTime = Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width))*decoded.duration; draw(); });
@@ -264,7 +298,19 @@ async function mountWaveform(panel, job, index, generation) {
     draw();
   });
   audio.addEventListener('timeupdate',draw); audio.addEventListener('seeked',draw);
-  panel.replaceChildren(canvas, clock, audio); draw();
+  const controls = document.createElement('div'); controls.className = 'waveform-toolbar';
+  const play = document.createElement('button'); play.className = 'secondary waveform-play';
+  play.textContent = '▶ Reproducir'; play.setAttribute('aria-label','Reproducir vista previa');
+  play.addEventListener('click', async () => {
+    if (!audio.paused) audio.pause();
+    else try { await audio.play(); } catch { toast('No se pudo reproducir el audio. Intenta nuevamente.',true); }
+  });
+  const syncPlay = () => { play.textContent = audio.paused ? '▶ Reproducir' : 'Ⅱ Pausar'; play.setAttribute('aria-label',audio.paused ? 'Reproducir vista previa' : 'Pausar vista previa'); };
+  audio.addEventListener('play',syncPlay); audio.addEventListener('pause',syncPlay); audio.addEventListener('ended',syncPlay);
+  const volume = document.createElement('input'); volume.type = 'range'; volume.min = 0; volume.max = 1; volume.step = .05; volume.value = 1;
+  volume.setAttribute('aria-label','Volumen de la vista previa'); volume.className = 'waveform-volume';
+  volume.addEventListener('input',() => { audio.volume = Number(volume.value); });
+  controls.append(play,clock,volume); panel.replaceChildren(canvas,controls,audio); draw();
 }
 async function showPreview(index, existingJob = null, existingIndex = 0) {
   const key = existingJob ? `${existingJob.id}:${existingIndex}` : index;
@@ -284,6 +330,9 @@ async function showPreview(index, existingJob = null, existingIndex = 0) {
   }
   try {
     let job = existingJob || previewJobs.get(track.source_url), selectedIndex = existingIndex;
+    if (!job && track.preview_job) {
+      job = (await api(`/api/jobs/${track.preview_job}`)).job; selectedIndex = track.preview_index;
+    }
     if (!job) {
       panel.textContent = 'Preparando audio real para la vista previa…';
       const created = await api('/api/jobs', {method:'POST',body:JSON.stringify({query:track.source_url,options:{bitrate:128,tags:false,lyrics:false,playlist:false}})});

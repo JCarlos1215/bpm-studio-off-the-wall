@@ -80,7 +80,15 @@ def create_app(data_dir=None):
             raise ValueError('Introduce una búsqueda válida.')
         try:
             tracks = providers.search(payload['query'], source=payload.get('source', 'auto'))
-            return jsonify(tracks=[{**track, 'preview_url': providers.preview_url(track)} for track in tracks])
+            cached = {}
+            for job in store.list():
+                for index, item in enumerate(job['tracks']):
+                    if item.get('status') == 'completed' and item.get('waveform'):
+                        for url in (item.get('source_url'), item.get('audio_source_url')):
+                            if url and url not in cached:
+                                cached[url] = {'waveform': item['waveform'], 'preview_job': job['id'], 'preview_index': index}
+            return jsonify(tracks=[{**track, 'preview_url': providers.preview_url(track),
+                                    **cached.get(track.get('source_url'), {})} for track in tracks])
         except providers.SourceError:
             raise
         except Exception as exc:

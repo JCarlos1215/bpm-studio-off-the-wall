@@ -33,6 +33,32 @@ def ffmpeg_path():
     return os.getenv('FFMPEG_PATH') or shutil.which('ffmpeg') or imageio_ffmpeg.get_ffmpeg_exe()
 
 
+def audio_waveform(path, count=700):
+    """Small persisted envelope computed before publishing the completed track."""
+    from array import array
+    import sys
+    import tempfile
+    with tempfile.TemporaryFile() as pcm:
+        subprocess.run([ffmpeg_path(), '-nostdin', '-hide_banner', '-loglevel', 'error',
+                        '-i', str(path), '-vn', '-ac', '1', '-ar', '8000',
+                        '-f', 's16le', 'pipe:1'], stdout=pcm, stderr=subprocess.PIPE,
+                       timeout=90, check=True)
+        length = pcm.tell() // 2
+        if not length:
+            raise ValueError('El audio no contiene muestras.')
+        pcm.seek(0)
+        peaks = []
+        for index in range(count):
+            size = ((index + 1) * length // count - index * length // count) * 2
+            samples = array('h')
+            samples.frombytes(pcm.read(size))
+            if sys.byteorder != 'little':
+                samples.byteswap()
+            peaks.append(round(max((abs(value) for value in samples), default=0) / 32768, 4))
+    return {'peaks': peaks, 'duration': length / 8000}
+
+
+
 def safe_name(value):
     return re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', value).strip(' .')[:160] or 'audio'
 
@@ -391,6 +417,11 @@ class JobStore:
         check()
         if options['tags']:
             tag_file(target, track, cover)
+        try:
+            track['waveform'] = audio_waveform(target)
+        except (subprocess.SubprocessError, ValueError, OSError):
+            warnings.append('La onda se calculará al abrir la vista previa.')
+        check()
         track.update(status='completed', progress=100, file=target.name, warnings=warnings)
         self.update(identifier, index, **track)
         source.unlink(missing_ok=True)
