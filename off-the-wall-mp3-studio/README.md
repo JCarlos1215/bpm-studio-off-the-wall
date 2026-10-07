@@ -64,7 +64,9 @@ La migración sustituye las dependencias antiguas de Node/Electron del original 
 
 ## Spotify
 
-Crea una aplicación en Spotify for Developers y configura las credenciales propias en `.env`:
+Los enlaces públicos se consultan sin credenciales mediante los metadatos del reproductor insertable de Spotify. Se importan las canciones que Spotify expone allí, hasta `MAX_PLAYLIST_ITEMS`; el reproductor puede mostrar solo parte de una lista. Las listas privadas, personalizadas o no disponibles en ese reproductor muestran un error de acceso.
+
+Para usar la API de Spotify como primera opción, crea una aplicación en Spotify for Developers y configura las credenciales propias en `.env` (local) o en **Environment** del servicio de Render:
 
 ```dotenv
 SPOTIFY_CLIENT_ID=tu_client_id
@@ -74,6 +76,16 @@ SPOTIFY_CLIENT_SECRET=tu_client_secret
 Se usa el flujo Client Credentials. Las credenciales permanecen en el servidor y no se entregan al navegador. El acceso a listas depende de los permisos y restricciones vigentes de la aplicación Spotify. Si Spotify rechaza el recurso, la interfaz muestra el error; no inventa resultados. Las listas privadas y los recursos que requieren acceso de usuario no están soportados por este flujo.
 
 Spotify y Deezer proporcionan metadatos, no el audio original. Como en AllToMP3, se busca una coincidencia en YouTube; puede ser otra versión, y no se garantiza que sea la grabación exacta. No se elimina DRM.
+
+## Verificación de YouTube
+
+Spotify solo proporciona los nombres de las pistas: el audio se busca en YouTube. Cuando YouTube solicita inicio de sesión o verificación, las credenciales de Spotify no resuelven ese rechazo. Iniciar sesión en YouTube en el navegador del usuario tampoco inicia sesión en el servidor de descargas.
+
+El contenedor incluye Node 22, compatible con los desafíos JavaScript de yt-dlp. Las búsquedas recuperan metadatos sin cargar el reproductor de cada resultado antes de la descarga.
+
+Si el servidor necesita una sesión autorizada, configura `YTDLP_COOKIES_FILE` con la ruta de un archivo de cookies de YouTube en formato Netscape. En Render, se puede crear un **Secret File** llamado `youtube-cookies.txt` y configurar `YTDLP_COOKIES_FILE=/etc/secrets/youtube-cookies.txt`. El archivo debe contener una sesión propia y vigente; no lo subas al repositorio ni lo envíes por chat. El descargador utiliza una copia temporal privada, por lo que no modifica el Secret File. Consulta las instrucciones y precauciones de [yt-dlp para exportar cookies](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies).
+
+Una sesión no garantiza acceso: YouTube también puede bloquear la conexión del servidor o exigir un PO Token. Si persiste el rechazo, consulta la [guía oficial de PO Tokens](https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide) o ejecuta el descargador en un equipo con acceso permitido.
 
 ## Límites y diferencias
 

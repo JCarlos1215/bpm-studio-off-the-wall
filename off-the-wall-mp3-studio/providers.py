@@ -1,9 +1,14 @@
 """Equivalent source resolution to AllToMP3 using maintained extractors."""
+from contextlib import contextmanager
+import json
 import os
+from html.parser import HTMLParser
 import re
 import shutil
 import subprocess
 from importlib.metadata import version, PackageNotFoundError
+
+import tempfile
 import time
 from urllib.parse import urlparse
 
@@ -73,6 +78,25 @@ def downloader_status():
     return {**packages, 'node': node_version,
             'javascript_ready': major >= 22 and bool(packages['yt-dlp-ejs'])}
 
+@contextmanager
+def open_downloader(options, factory=None):
+    """Use an optional server session; keep mounted secrets read-only."""
+    cookie_file = os.getenv('YTDLP_COOKIES_FILE', '').strip()
+    factory = factory or YoutubeDL
+    if not cookie_file:
+        with factory(options) as downloader:
+            yield downloader
+        return
+    with tempfile.TemporaryDirectory(prefix='mp3-session-') as directory:
+        cookie_copy = os.path.join(directory, 'cookies.txt')
+        try:
+            shutil.copyfile(cookie_file, cookie_copy)
+            os.chmod(cookie_copy, 0o600)
+        except OSError as exc:
+            raise SourceError('No se pudo leer la sesión configurada en YTDLP_COOKIES_FILE del servidor.') from exc
+        with factory({**options, 'cookiefile': cookie_copy}) as downloader:
+            yield downloader
+
 
 def clean_title(title):
     return re.sub(r'\s*[\[(](?:official.*?|lyrics.*?|audio.*?|video.*?)[\])]\s*', '', title or '', flags=re.I).strip()
@@ -101,8 +125,8 @@ def extract_online(query, search_limit=1, playlist=False):
     if provider == 'search':
         query = f'ytsearch{search_limit}:{query}'
         provider = 'youtube'
-    with YoutubeDL(ydl_options(
-        extract_flat='in_playlist', skip_download=True,
+    with open_downloader(ydl_options(
+        extract_flat=True if query.startswith('ytsearch') else 'in_playlist', skip_download=True,
         noplaylist=not playlist, playlistend=MAX_ITEMS,
     )) as ydl:
         info = ydl.extract_info(query, download=False)
@@ -184,11 +208,81 @@ def spotify_track(item, album=None):
     }
 
 
+
+class _SpotifyEmbedData(HTMLParser):
+    """Read Spotify's public metadata without executing page scripts."""
+    def __init__(self):
+        super().__init__()
+        self.reading = False
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'script' and dict(attrs).get('id') == '__NEXT_DATA__':
+            self.reading = True
+
+    def handle_data(self, data):
+        if self.reading:
+            self.parts.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == 'script':
+            self.reading = False
+
+
+def spotify_public_resolve(kind, identifier):
+    """Resolve only the tracks Spotify exposes in its public embed."""
+    unavailable = ('Spotify no publica canciones accesibles para este enlace. '
+                   'Comprueba que la lista sea pública; las listas privadas o personalizadas '
+                   'pueden requerir acceso de usuario. Prueba una lista pública o un enlace de YouTube.')
+    try:
+        response = requests.get(
+            f'https://open.spotify.com/embed/{kind}/{identifier}',
+            headers=HEADERS, timeout=HTTP_TIMEOUT,
+        )
+        response.raise_for_status()
+        parser = _SpotifyEmbedData()
+        parser.feed(response.text)
+        data = json.loads(''.join(parser.parts))
+        entity = data['props']['pageProps']['state']['data']['entity']
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+        raise SourceError(unavailable) from exc
+    if not isinstance(entity, dict) or entity.get('id') != identifier or entity.get('type') != kind:
+        raise SourceError(unavailable)
+
+    rows = [entity] if kind == 'track' else entity.get('trackList') or []
+    tracks = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        uri = row.get('uri') or ''
+        match = re.fullmatch(r'spotify:track:([A-Za-z0-9]+)', uri)
+        title = row.get('title') or row.get('name')
+        artist = ', '.join(a.get('name', '') for a in row.get('artists', []) if isinstance(a, dict)) or row.get('subtitle') or ''
+        if not match or not title or not artist:
+            continue
+        images = (row.get('visualIdentity') or {}).get('image') or []
+        release = (row.get('releaseDate') or {}).get('isoString') or ''
+        tracks.append({
+            'title': title, 'artist': artist, 'album': entity.get('name', '') if kind == 'album' else '',
+            'genre': '', 'duration': (row.get('duration') or 0) / 1000,
+            'cover': images[0].get('url', '') if images else '',
+            'source_url': 'https://open.spotify.com/track/' + match[1],
+            'source': 'spotify', 'year': release[:4], 'track_number': '',
+        })
+        if len(tracks) >= MAX_ITEMS:
+            break
+    if not tracks:
+        raise SourceError(unavailable)
+    return entity.get('name') or entity.get('title') or 'Spotify', tracks
+
+
 def spotify_resolve(url):
     match = re.search(r'/(track|album|playlist)/([A-Za-z0-9]+)', urlparse(url).path)
     if not match:
         raise SourceError('Usa el enlace completo de una canción, álbum o lista de Spotify.')
     kind, identifier = match.groups()
+    if not (os.getenv('SPOTIFY_CLIENT_ID', '').strip() and os.getenv('SPOTIFY_CLIENT_SECRET', '').strip()):
+        return spotify_public_resolve(kind, identifier)
     headers = {**HEADERS, 'Authorization': 'Bearer ' + spotify_token()}
 
     def fetch(path):

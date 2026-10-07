@@ -301,13 +301,13 @@ class JobStore:
             def error(self, message):
                 pass
 
-        with YoutubeDL(providers.ydl_options(
+        with providers.open_downloader(providers.ydl_options(
             format='bestaudio/best', noplaylist=True,
             outtmpl=str(folder / f'source-{index}.%(ext)s'),
             progress_hooks=[progress], logger=Logger(),
             max_filesize=200 * 1024 * 1024,
             match_filter=lambda info, *, incomplete: 'El audio supera el límite de 30 minutos.' if (info.get('duration') or 0) > 1800 else None,
-        )) as ydl:
+        ), factory=YoutubeDL) as ydl:
             info = ydl.extract_info(url, download=True)
             check()
             if not info:
@@ -350,10 +350,15 @@ class JobStore:
 
 def readable_error(error):
     message = re.sub(r'\x1b\[[0-9;]*m', '', str(error)).strip()
+    lower = message.lower()
+    if 'sign in' in lower or 'not a bot' in lower or 'confirm you’re not' in lower:
+        if 'youtube' not in lower:
+            return 'La plataforma requiere verificación o inicio de sesión para acceder a este audio.'
+        if os.getenv('YTDLP_COOKIES_FILE', '').strip():
+            return 'YouTube rechazó la sesión del servidor. Puede haber caducado o la conexión del servidor puede estar bloqueada. Consulta la configuración de YouTube del servidor.'
+        return 'YouTube solicita verificación al servidor que descarga el audio. Configura una sesión de YouTube en el servidor o usa un enlace de SoundCloud disponible.'
     if 'Failed to extract any player response' in message:
         return ('YouTube no devolvió una respuesta válida al servidor. Revisa la versión de '
                 'yt-dlp, sus componentes EJS y Node.js 22 o posterior en /api/status; '
                 'si están actualizados, comprueba la disponibilidad del video y la conexión del servidor.')
-    if 'Sign in' in message or 'bot' in message.lower():
-        return 'La plataforma requiere verificación o inicio de sesión. Prueba otro enlace disponible.'
     return message[:1200] or 'No se pudo completar esta operación.'
