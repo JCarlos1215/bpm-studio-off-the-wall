@@ -21,3 +21,8 @@ formatos dependen de los decodificadores disponibles en el navegador.
 Desde la carpeta principal del proyecto, inicia `Iniciar BPM Studio.command` y elige
 **Tonalidad y energía**. El iframe y todos los archivos del módulo se sirven desde
 `127.0.0.1`; la interfaz y el análisis no necesitan Internet.
+
+En iPhone, guarda el audio en la app **Archivos** y selecciónalo desde el analizador.
+El selector no filtra por tipo MIME para evitar que iOS deshabilite audios identificados
+como archivos genéricos. El navegador valida el contenido al decodificarlo; si el formato
+no es compatible, muestra un mensaje con alternativas (MP3, WAV o M4A sin protección).

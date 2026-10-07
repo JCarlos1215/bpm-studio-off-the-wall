@@ -90,7 +90,12 @@ fileInput.addEventListener('change', async () => {
     const audioData = await file.arrayBuffer();
     if (id !== runId) return;
     setStatus('Calculando tonalidad, tempo, energía y secciones…');
-    const buffer = await audioContext.decodeAudioData(audioData);
+    let buffer;
+    try {
+      buffer = await audioContext.decodeAudioData(audioData);
+    } catch {
+      throw new Error('este navegador no puede leer el audio del archivo. Prueba con un MP3, WAV o M4A sin protección. En iPhone, guarda primero el archivo en la app Archivos.');
+    }
     if (id !== runId) return;
     if (buffer.duration > 20 * 60) {
       throw new Error('la duración supera el límite local de 20 minutos.');

@@ -23,7 +23,8 @@
         <span class="file-icon" aria-hidden="true">♫</span>
         <strong id="file-label">Selecciona un archivo de audio</strong>
         <span>MP3, WAV, FLAC, AAC, M4A u otro formato compatible</span>
-        <input id="audio-file" type="file" accept="audio/*">
+        <!-- Sin filtro MIME: Archivos de iOS puede identificar audio como un tipo genérico. -->
+        <input id="audio-file" type="file" aria-label="Seleccionar archivo de audio desde Archivos">
       </label>
       <audio id="audio-player" controls hidden></audio>
       <div id="status" class="status" role="status">Elige una pista para comenzar el análisis local.</div>
