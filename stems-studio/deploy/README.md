@@ -1,5 +1,9 @@
 # Servidor dedicado de Stems Studio
 
+**Opción de pago descartada por el usuario.** La plataforma usa ahora servicios
+gratuitos compartidos en `stems-separator/`. No contratar esta instancia; estos
+archivos se conservan únicamente como referencia técnica para una futura petición.
+
 Estado: código preparado y pruebas del adaptador ejecutables. El contenedor Linux
 todavía requiere construirse y probarse en un servidor NVIDIA real. No existe
 aún una instancia contratada ni una dirección remota configurada.
