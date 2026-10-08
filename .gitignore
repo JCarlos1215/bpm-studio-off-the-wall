@@ -15,3 +15,6 @@ off-the-wall-mp3-studio/data/
 # Installed JavaScript dependencies
 node_modules/
 **/node_modules/
+
+# Local stemd runtime and test audio
+work/stems/

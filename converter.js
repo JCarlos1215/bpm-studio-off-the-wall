@@ -63,7 +63,7 @@ $('convertButton').addEventListener('click',convert);$('cancelConversion').addEv
 for(const event of ['dragenter','dragover'])$('fileDrop').addEventListener(event,e=>{e.preventDefault();if(!busy)$('fileDrop').classList.add('dragging');});
 for(const event of ['dragleave','drop'])$('fileDrop').addEventListener(event,e=>{e.preventDefault();$('fileDrop').classList.remove('dragging');});
 $('fileDrop').addEventListener('drop',e=>{if(busy)return;if(e.dataTransfer.files.length!==1){say('Selecciona un solo archivo por conversión.',true);return;}selectFile(e.dataTransfer.files[0]);});
-function switchView(view){if(busy&&view!=='converter')return;if(view!=='bpm')window.dispatchEvent(new Event('studio:converter'));for(const [name,button] of [['bpm','showBpm'],['converter','showConverter'],['mp3','showMp3'],['rekordbox','showRekordbox'],['keyAnalyzer','showKeyAnalyzer'],['stems','showStems']]){const active=view===name;$(name+'View').hidden=!active;$(button).classList.toggle('selected',active);$(button).setAttribute('aria-pressed',String(active));}document.body.classList.toggle('converter-open',view!=='bpm');if(view==='bpm')window.dispatchEvent(new Event('resize'));if(view==='stems'&&$('stemsFrame').getAttribute('src')==='about:blank')$('stemsFrame').src=$('stemsFrame').dataset.src;}
+function switchView(view){if(busy&&view!=='converter')return;$('stemsFrame').contentWindow?.postMessage({type:'stems-studio-visibility',visible:view==='stems'},location.origin);if(view!=='bpm')window.dispatchEvent(new Event('studio:converter'));for(const [name,button] of [['bpm','showBpm'],['converter','showConverter'],['mp3','showMp3'],['rekordbox','showRekordbox'],['keyAnalyzer','showKeyAnalyzer'],['stems','showStems']]){const active=view===name;$(name+'View').hidden=!active;$(button).classList.toggle('selected',active);$(button).setAttribute('aria-pressed',String(active));}document.body.classList.toggle('converter-open',view!=='bpm');if(view==='bpm')window.dispatchEvent(new Event('resize'));if(view==='stems'&&$('stemsFrame').getAttribute('src')==='about:blank')$('stemsFrame').src=$('stemsFrame').dataset.src;}
 $('showBpm').addEventListener('click',()=>switchView('bpm'));$('showConverter').addEventListener('click',()=>switchView('converter'));$('showMp3').addEventListener('click',()=>switchView('mp3'));$('showRekordbox').addEventListener('click',()=>switchView('rekordbox'));$('showKeyAnalyzer').addEventListener('click',()=>switchView('keyAnalyzer'));
 const mp3Frame=$('mp3Frame');
 const isLocalStudio=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='8080';
@@ -76,7 +76,7 @@ window.addEventListener('pagehide',()=>{cancel();clearResult();});hint();
 $('showStems').addEventListener('click',()=>switchView('stems'));
 const stemsFrame=$('stemsFrame');
 window.addEventListener('message',event=>{
-  if(event.source!==stemsFrame.contentWindow||event.origin!==location.origin||event.data?.type!=='stems-resize')return;
+  if(event.source!==stemsFrame.contentWindow||event.origin!==location.origin||!['stems-resize','stems-studio-resize'].includes(event.data?.type))return;
   const height=Number(event.data.height);
   if(Number.isFinite(height))stemsFrame.style.height=`${Math.max(720,Math.min(height,6000))}px`;
 });
