@@ -1,6 +1,6 @@
 'use strict';
 const $ = id => document.getElementById(id);
-const local = ['127.0.0.1','localhost'].includes(location.hostname) || location.hostname.endsWith('github.io');
+const local = location.protocol==='file:' || ['127.0.0.1','localhost'].includes(location.hostname) || location.hostname.endsWith('github.io');
 const engine = local ? 'http://127.0.0.1:8421' : location.origin;
 const parentOrigin = new URL(document.referrer || location.href).origin;
 let accessToken = sessionStorage.getItem('stems-access') || '';

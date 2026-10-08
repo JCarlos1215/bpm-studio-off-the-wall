@@ -94,10 +94,8 @@ El flujo conserva la arquitectura de AllToMP3: SoundCloud se extrae desde su enl
 
 GitHub Pages sirve la rama `main`; el backend Render está conectado a `master`. Ambas ramas deben contener las correcciones. Después de desplegar, comprueba `/api/status` y una conversión desde la IP de Render: la extracción local no demuestra que YouTube acepte solicitudes del servidor.
 
-### Stems Studio integrado con stemd
+### Stems Studio gratuito en la nube
 
-La pestaña **Stems Studio** carga `stems-studio/` dentro del mismo sitio mediante iframe. Usa el motor real [stemd](https://github.com/nsaintot/stemd) en este Mac, con el perfil Quality (BS PolarFormer + htdemucs_ft), precisión completa y solapamiento 0.5. Entrega voces, batería y armónicos (incluye bajo y otros instrumentos), con escucha, ondas y descarga WAV float32 dentro del panel.
+La pestaña **Stems Studio** carga `stems-separator/` dentro de la página. Usa servicios públicos gratuitos de Hugging Face: UVR5/Roformer/Demucs y una alternativa Demucs. Puedes usarla desde móvil, tablet o computadora sin mantener la Mac encendida. Los archivos se envían al servicio que indica el panel. Se respetan las colas y cuotas del proveedor; no es un servidor dedicado ilimitado. Ver [instrucciones](stems-separator/README.md).
 
-Activa `stems-studio/Start-Stems-Studio.command` y mantén el motor abierto. La página pública requiere que el navegador permita conexión a localhost; el iniciador también sirve la misma plataforma en `http://127.0.0.1:8080` para navegadores que bloqueen HTTPS → localhost. No se redirige automáticamente a otra página. El Render gratuito de Download Manager no aloja este motor; para separar desde cualquier dispositivo se necesita un servidor dedicado. Ver [instrucciones y límites](stems-studio/README.md).
-
-El prototipo UVR5/Hugging Face anterior permanece en `stems-separator/`, pero no es el motor de la pestaña actual. No se eliminaron sus archivos.
+El selector conserva **stemd Quality local** en `stems-studio/`, con voces, batería y armónicos, ondas y WAV float32. Activa `stems-studio/Start-Stems-Studio.command` para esa opción. Los motores gratuitos de Hugging Face son distintos de stemd. La contratación de un servidor GPU fue descartada por petición del usuario; no se creó ningún servicio de pago.

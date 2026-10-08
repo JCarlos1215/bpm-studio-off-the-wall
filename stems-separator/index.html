@@ -5,23 +5,26 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Separador de stems — BPM Studio</title>
-  <link rel="stylesheet" href="./style.css?v=stems-20261007-2">
-  <script type="module" src="./app.js?v=stems-20261007-2"></script>
+  <link rel="stylesheet" href="./style.css?v=free-20261007-1">
+  <script type="module" src="./app.js?v=free-20261007-1"></script>
 </head>
 <body>
   <main class="shell">
     <header><p class="eyebrow">OFF THE WALL / SEPARACIÓN DE AUDIO</p><h1>Separador de stems</h1><p>Separa voz, batería, bajo y otros instrumentos sin salir de BPM Studio.</p></header>
     <section class="panel" aria-label="Guía de separación">
-      <div class="guide">
+      <label for="engine">Motor de separación</label>
+      <select id="engine"><option value="uvr">Gratis en la nube · UVR5 / Roformer / Demucs</option><option value="demucs">Gratis en la nube · Demucs (alternativa)</option><option value="local">stemd Quality · motor en tu Mac</option></select>
+      <p id="engine-note" class="notice">Procesamiento gratuito en GPU compartida de Hugging Face. Tu Mac no necesita estar encendida.</p>
+      <div class="guide" id="uvr-guide">
         <div><h2>Voz e instrumental</h2><p>En «BS/Mel Roformer», elige «BS-Roformer-Viperx-1297».</p></div>
         <div><h2>4 o 6 stems</h2><p>En «Demucs», elige «htdemucs_ft.yaml» para voz, batería, bajo y otros. «htdemucs_6s.yaml» añade guitarra y piano.</p></div>
         <div><h2>Guardar el resultado</h2><p>Selecciona WAV o FLAC, carga el audio desde Archivos y pulsa «Separate!». Descarga cada stem con su botón ↓.</p></div>
       </div>
-      <p class="notice">El audio seleccionado se sube a Hugging Face · TheStinger/UVR5_UI. La calidad depende de la mezcla; el servicio puede tener colas, límites de GPU o requerir una cuenta.</p>
+      <p class="notice" id="privacy">El audio seleccionado se sube a Hugging Face · TheStinger/UVR5_UI. La calidad depende de la mezcla; el servicio puede tener colas, límites de GPU o requerir una cuenta.</p>
       <button id="reload" type="button">Recargar separador</button>
       <p id="status" class="notice" role="status">Carga tu audio y procesa la separación en el panel de abajo. Si el servicio no responde, pulsa Recargar separador.</p>
     </section>
-    <iframe id="separator" title="Modelos y procesamiento del separador de stems" src="https://thestinger-uvr5-ui.hf.space/?__theme=dark" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads" referrerpolicy="no-referrer" allow="clipboard-write"></iframe>
+    <iframe id="separator" title="Modelos y procesamiento del separador de stems" src="https://thestinger-uvr5-ui.hf.space/?__theme=dark" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads" referrerpolicy="no-referrer" allow="clipboard-write; loopback-network; local-network-access"></iframe>
   </main>
 </body>
 </html>
