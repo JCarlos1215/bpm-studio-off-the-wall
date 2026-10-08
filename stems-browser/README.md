@@ -53,3 +53,10 @@ Si el navegador rechaza la caché por espacio/permisos, el motor puede cargar
 las piezas directamente. La primera visita necesita transferir el modelo:
 preparación automática no significa inferencia instantánea. El almacenamiento
 puede ser borrado por el navegador. La separación no utiliza Render.
+
+Validación de la versión integrada: un WAV sintético propio de 30 segundos
+inició automáticamente al seleccionarlo y terminó con cuatro stems en el
+navegador de la Mac, sin recarga. Los cuatro reproductores informaron duración
+30 s y se comprobó la reproducción. La descarga automatizada de blobs no
+pudo verificarse con el navegador integrado (no emitió evento de descarga).
+Los tests de WAV, continuidad de bloques y SHA-256 del modelo pasan.
