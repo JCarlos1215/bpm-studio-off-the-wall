@@ -1,1 +1,6 @@
 export function encodeWav(stereo){const n=stereo[0].length,bytes=new ArrayBuffer(44+n*8),v=new DataView(bytes);const text=(at,s)=>{for(let i=0;i<s.length;i++)v.setUint8(at+i,s.charCodeAt(i));};text(0,'RIFF');v.setUint32(4,36+n*8,true);text(8,'WAVE');text(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,3,true);v.setUint16(22,2,true);v.setUint32(24,44100,true);v.setUint32(28,44100*8,true);v.setUint16(32,8,true);v.setUint16(34,32,true);text(36,'data');v.setUint32(40,n*8,true);for(let i=0;i<n;i++){v.setFloat32(44+i*8,stereo[0][i],true);v.setFloat32(48+i*8,stereo[1][i],true);}return bytes;}
+export function wavHeader(frames){
+  if(!Number.isSafeInteger(frames)||frames<1||frames*8>0xffffffff-36)throw new Error('El audio supera el tamaño WAV disponible.');
+  const bytes=new ArrayBuffer(44),v=new DataView(bytes);const text=(at,s)=>{for(let i=0;i<s.length;i++)v.setUint8(at+i,s.charCodeAt(i));};
+  text(0,'RIFF');v.setUint32(4,36+frames*8,true);text(8,'WAVE');text(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,3,true);v.setUint16(22,2,true);v.setUint32(24,44100,true);v.setUint32(28,44100*8,true);v.setUint16(32,8,true);v.setUint16(34,32,true);text(36,'data');v.setUint32(40,frames*8,true);return bytes;
+}

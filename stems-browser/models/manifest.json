@@ -1,0 +1,28 @@
+{
+  "version": "htdemucs-v1",
+  "bytes": 180534758,
+  "sha256": "e5e425c17683f163a472462eb5f5a4ffcd11c31858d57fbd0833b012d8b88077",
+  "source": "https://huggingface.co/timcsy/demucs-web-onnx/resolve/main/htdemucs_embedded.onnx",
+  "parts": [
+    {
+      "file": "htdemucs-v1.part1.bin",
+      "bytes": 50331648,
+      "sha256": "8daf66ee065c5875f1ac2cd5e08ec70d0bb14e91d35bcb4af22c4fd863bbf689"
+    },
+    {
+      "file": "htdemucs-v1.part2.bin",
+      "bytes": 50331648,
+      "sha256": "1a5997c8d9db1d4c8102945f1887d92b35c0c9b85eebe90d6bbf6b9486da350c"
+    },
+    {
+      "file": "htdemucs-v1.part3.bin",
+      "bytes": 50331648,
+      "sha256": "71077a88c5d2467684138fe844a240e33f0c622227c7fd75c4e54cd87e2a28b4"
+    },
+    {
+      "file": "htdemucs-v1.part4.bin",
+      "bytes": 29539814,
+      "sha256": "0b79912f9c6e0a824f779f31613ed876e0f42f910234d5a4e5022a1402cb4b99"
+    }
+  ]
+}
