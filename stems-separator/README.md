@@ -1,6 +1,16 @@
+# Motor predeterminado sin cuota de servidor
+
+La pestaña usa ahora Demucs en el navegador (`../stems-browser/`). No utiliza
+los minutos de inferencia de Hugging Face Spaces. Véase su README para
+requisitos, limitaciones de memoria y pruebas.
+
+stemd en la Mac también queda disponible. Los servicios compartidos descritos
+a continuación se conservan como alternativas con cuota, no como una solución
+ilimitada. Cambiar entre esos dos servicios no restablece la cuota.
+
 # Stems gratuito en la nube
 
-La pestaña Stems Studio usa por defecto un servicio público de Hugging Face,
+Los servicios públicos opcionales de Hugging Face se muestran
 integrado mediante iframe. Funciona sin el motor de la Mac ni contratar una GPU.
 
 - Principal: TheStinger/UVR5_UI, con Roformer, Demucs y otros modelos.

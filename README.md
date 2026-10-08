@@ -94,8 +94,10 @@ El flujo conserva la arquitectura de AllToMP3: SoundCloud se extrae desde su enl
 
 GitHub Pages sirve la rama `main`; el backend Render está conectado a `master`. Ambas ramas deben contener las correcciones. Después de desplegar, comprueba `/api/status` y una conversión desde la IP de Render: la extracción local no demuestra que YouTube acepte solicitudes del servidor.
 
-### Stems Studio gratuito en la nube
+### Stems Studio sin cuota de servidor
 
-La pestaña **Stems Studio** carga `stems-separator/` dentro de la página. Usa servicios públicos gratuitos de Hugging Face: UVR5/Roformer/Demucs y una alternativa Demucs. Puedes usarla desde móvil, tablet o computadora sin mantener la Mac encendida. Los archivos se envían al servicio que indica el panel. Se respetan las colas y cuotas del proveedor; no es un servidor dedicado ilimitado. Ver [instrucciones](stems-separator/README.md).
+La pestaña **Stems Studio** usa por defecto **Demucs ONNX en el dispositivo** (`stems-browser/`). No consume minutos de GPU compartida ni sube audio a un servidor. Se descarga un modelo de aproximadamente 172 MB y el navegador realiza la inferencia en un Worker. Entrega batería, bajo, otros instrumentos y voces con reproducción, ondas y WAV float32 dentro del iframe.
 
-El selector conserva **stemd Quality local** en `stems-studio/`, con voces, batería y armónicos, ondas y WAV float32. Activa `stems-studio/Start-Stems-Studio.command` para esa opción. Los motores gratuitos de Hugging Face son distintos de stemd. La contratación de un servidor GPU fue descartada por petición del usuario; no se creó ningún servicio de pago.
+No hay contador diario de canciones o solicitudes. La memoria y velocidad del equipo siguen limitando las pistas que puede procesar; WebGPU se usa cuando está disponible; WASM en un solo hilo puede ser lento. Abre la plataforma publicada por HTTPS o el servidor local, no index.html mediante `file://`. Ver [instrucciones](stems-browser/README.md).
+
+El selector conserva **stemd Quality local** para usar la Mac, y los servicios públicos UVR5/Demucs como alternativas identificadas **con cuota**. Cambiar entre esos servicios públicos no elimina su cuota compartida. Los motores locales son distintos de Mixed In Key; no se promete igualdad de calidad con ese producto. No se creó ningún servicio de pago.
