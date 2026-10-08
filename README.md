@@ -94,14 +94,10 @@ El flujo conserva la arquitectura de AllToMP3: SoundCloud se extrae desde su enl
 
 GitHub Pages sirve la rama `main`; el backend Render está conectado a `master`. Ambas ramas deben contener las correcciones. Después de desplegar, comprueba `/api/status` y una conversión desde la IP de Render: la extracción local no demuestra que YouTube acepte solicitudes del servidor.
 
-### Separador de stems en línea
+### Stems Studio integrado con stemd
 
-La pestaña **Separador de stems** integra mediante iframe el servicio público
-[TheStinger/UVR5_UI](https://huggingface.co/spaces/TheStinger/UVR5_UI) en Hugging Face.
-Se carga al abrir la pestaña. El audio seleccionado se sube al proveedor externo;
-GitHub Pages no ejecuta el modelo ni almacena el audio. BS-Roformer-Viperx-1297
-permite separar voz e instrumental; HTDemucs FT permite cuatro stems y HTDemucs 6s
-seis. La interfaz, las instrucciones, la carga y la descarga se presentan dentro
-del iframe local `stems-separator/`. El servicio integrado permite descargas, pero
-no abrir ventanas ni navegar fuera del marco. El servicio puede requerir una
-cuenta, imponer cuotas de GPU o tener colas; la calidad depende del material.
+La pestaña **Stems Studio** carga `stems-studio/` dentro del mismo sitio mediante iframe. Usa el motor real [stemd](https://github.com/nsaintot/stemd) en este Mac, con el perfil Quality (BS PolarFormer + htdemucs_ft), precisión completa y solapamiento 0.5. Entrega voces, batería y armónicos (incluye bajo y otros instrumentos), con escucha, ondas y descarga WAV float32 dentro del panel.
+
+Activa `stems-studio/Start-Stems-Studio.command` y mantén el motor abierto. La página pública requiere que el navegador permita conexión a localhost; el iniciador también sirve la misma plataforma en `http://127.0.0.1:8080` para navegadores que bloqueen HTTPS → localhost. No se redirige automáticamente a otra página. El Render gratuito de Download Manager no aloja este motor; para separar desde cualquier dispositivo se necesita un servidor dedicado. Ver [instrucciones y límites](stems-studio/README.md).
+
+El prototipo UVR5/Hugging Face anterior permanece en `stems-separator/`, pero no es el motor de la pestaña actual. No se eliminaron sus archivos.
