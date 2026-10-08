@@ -13,7 +13,7 @@ El separador es **stemd**, no un filtro ni una separación simulada. Se utiliza 
 
 El Mac tiene stemd en `/Applications/Stemd.app` y los modelos en `~/Library/Application Support/stemd/models`. El iniciador usa el entorno Python de `off-the-wall-mp3-studio/.venv` (Flask, requests, waitress). Si clonaste en otro equipo, crea ese entorno e instala `off-the-wall-mp3-studio/requirements.txt`.
 
-El motor escucha únicamente en `127.0.0.1:8420`; el adaptador web en `127.0.0.1:8421`. No se publica el motor en la red. Si el navegador pide permiso para conectar con el motor local, el usuario puede concederlo para este sitio. No se desactiva la protección del navegador.
+El motor escucha únicamente en `127.0.0.1:8420`; el adaptador web en `127.0.0.1:8421`. No se publica el motor en la red. Si el navegador pide permiso para conectar con el motor local, el usuario puede concederlo para este sitio. No se desactiva la protección del navegador. Chrome reciente requiere permiso de conexión local; la interfaz declara `targetAddressSpace: loopback` y delega ese permiso al iframe. Safari y algunos navegadores integrados pueden bloquear HTTPS → localhost. El iniciador también sirve la misma página en `http://127.0.0.1:8080` para usar el iframe localmente en ese caso, sin redirigir a un servicio externo.
 
 ## Audio y precisión
 
