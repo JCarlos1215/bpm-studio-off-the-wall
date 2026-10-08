@@ -60,3 +60,11 @@ navegador de la Mac, sin recarga. Los cuatro reproductores informaron duración
 30 s y se comprobó la reproducción. La descarga automatizada de blobs no
 pudo verificarse con el navegador integrado (no emitió evento de descarga).
 Los tests de WAV, continuidad de bloques y SHA-256 del modelo pasan.
+
+Preparación anticipada: BPM Studio carga el iframe oculto desde que abre la
+página y el panel inicializa el Worker, runtime y sesión ONNX antes de elegir
+un audio. “Motor listo” aparece solo después de recibir ready del Worker.
+No es posible evitar la transferencia inicial de archivos en un navegador
+nuevo; la caché adelanta y reutiliza esa preparación. Al terminar/cancelar
+se libera el Worker para limitar memoria, y una siguiente pista reinicia
+la sesión con los archivos guardados.

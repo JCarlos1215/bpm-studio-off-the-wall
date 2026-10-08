@@ -81,3 +81,6 @@ window.addEventListener('message',event=>{
   const height=Number(event.data.height);
   if(Number.isFinite(height))stemsFrame.style.height=`${Math.max(720,Math.min(height,6000))}px`;
 });
+
+// Prepare the embedded engine as soon as BPM Studio opens.
+if(stemsFrame.getAttribute('src')==='about:blank'){stemsFrame.loading='eager';stemsFrame.src=stemsFrame.dataset.src;}
