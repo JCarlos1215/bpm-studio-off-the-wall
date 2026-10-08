@@ -68,3 +68,69 @@ def test_stream_contains_header_and_unchanged_float_samples(monkeypatch):
     assert response.data[44:]==pcm
     assert len(response.data)==44+len(pcm)
     upstream_stem.close.assert_called_once()
+
+
+def test_remote_requires_authentication_and_rejects_external_origins(monkeypatch):
+    monkeypatch.setattr(bridge, 'REMOTE', True)
+    monkeypatch.setattr(bridge, 'SECRET', 's' * 40)
+    mock = Mock(return_value=Mock(json=lambda: {'device':'gpu'}))
+    monkeypatch.setattr(bridge, 'upstream', mock)
+    client = bridge.app.test_client()
+    assert client.get('/api/health').status_code == 401
+    assert client.get('/api/health', headers={'Authorization':'Bearer wrong'}).status_code == 401
+    assert not mock.called
+    auth = {'Authorization':'Bearer '+ 's'*40, 'Origin':'http://localhost'}
+    assert client.get('/api/health', headers=auth).status_code == 200
+    auth['Origin'] = 'https://evil.example'
+    assert client.get('/api/health', headers=auth).status_code == 403
+
+
+def test_signed_download_only_grants_exact_file_and_expires(monkeypatch):
+    monkeypatch.setattr(bridge, 'REMOTE', True)
+    monkeypatch.setattr(bridge, 'SECRET', 's' * 40)
+    monkeypatch.setattr(bridge.time, 'time', lambda: 1000)
+    path = '/api/jobs/test-1/stems/vocals'
+    query = f'?expires=1200&signature={bridge.signature(path, 1200)}'
+    client = bridge.app.test_client()
+    assert client.get('/api/jobs/test-1' + query).status_code == 401
+    assert client.get('/api/jobs/test-1/stems/drums' + query).status_code == 401
+    assert client.get(path + '?expires=900&signature=' + bridge.signature(path, 900)).status_code == 401
+    pcm = struct.pack('<ff', .2, -.2)
+    result = {'format':'pcm32','frames':1,'channels':2,'sample_rate':44100,'stems':[{'name':'vocals','gain':1}]}
+    monkeypatch.setattr(bridge, 'upstream', Mock(side_effect=[
+        Mock(json=lambda:{'progress':{'stage':'done'},'result':result}),
+        Mock(iter_content=lambda size:iter([pcm]))]))
+    assert client.get(path + query).data[44:] == pcm
+
+
+def test_remote_waveform_uses_real_pcm_even_when_chunks_split_samples(monkeypatch):
+    pcm = struct.pack('<ffff', .25, -.5, 1.2, -.1)
+    job = Mock(json=lambda:{'progress':{'stage':'done'},'result':{'format':'pcm32','frames':2,'channels':2}})
+    stream = Mock(iter_content=lambda size:iter([pcm[:3],pcm[3:9],pcm[9:]]))
+    monkeypatch.setattr(bridge, 'upstream', Mock(side_effect=[job, stream]))
+    response = bridge.app.test_client().get('/api/jobs/test-1/peaks/vocals')
+    assert response.status_code == 200
+    peaks = response.json['peaks']
+    assert len(peaks) == 700
+    assert max(peaks) == pytest.approx(1.2)
+    assert peaks[0] == .25
+    stream.close.assert_called_once()
+
+
+def test_encoded_upload_really_decodes_and_keeps_lossless_output(monkeypatch):
+    import imageio_ffmpeg
+    monkeypatch.setenv('FFMPEG_BINARY', imageio_ffmpeg.get_ffmpeg_exe())
+    samples = struct.pack('<ff', .25, -.25) * 4410
+    wav = bridge.wav_header(4410, 44100, 2) + samples
+    submitted = []
+    def submit(audio):
+        submitted.append(audio.read())
+        return Mock(status_code=202, json=lambda:{'id':'test-1','progress':{'stage':'queued'}})
+    monkeypatch.setattr(bridge, 'submit', submit)
+    client = bridge.app.test_client()
+    response = client.post('/api/files', data=wav, headers={'X-Requested-With':'StemsStudio'})
+    assert response.status_code == 202
+    assert submitted == [samples]
+    response = client.post('/api/files', data=b'not audio', headers={'X-Requested-With':'StemsStudio'})
+    assert response.status_code == 400
+    assert len(submitted) == 1

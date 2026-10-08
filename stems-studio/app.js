@@ -1,6 +1,13 @@
 'use strict';
 const $ = id => document.getElementById(id);
-const engine = 'http://127.0.0.1:8421';
+const local = ['127.0.0.1','localhost'].includes(location.hostname) || location.hostname.endsWith('github.io');
+const engine = local ? 'http://127.0.0.1:8421' : location.origin;
+const parentOrigin = new URL(document.referrer || location.href).origin;
+let accessToken = sessionStorage.getItem('stems-access') || '';
+$('server-access').hidden=local;
+$('access').value=accessToken;
+$('access-form').addEventListener('submit',event=>{event.preventDefault();accessToken=$('access').value.trim();sessionStorage.setItem('stems-access',accessToken);connect();});
+if(!local){$('processing-note').textContent='Tu archivo se procesa en el servidor dedicado. Puedes usar tu teléfono, tablet o computadora.';$('help-title').textContent='Cómo acceder al servidor';$('help-text').textContent='Introduce tu clave de acceso y selecciona un archivo. Mantén esta pestaña abierta mientras se procesa. No necesitas encender tu Mac.';}
 let selected = null, online = false, busy = false, generation = 0, jobId = null, upload = null, mediaURLs = [];
 const stages = {queued:'En cola',analysing:'Analizando la pista',separating:'Separando voces e instrumentos',reconstructing:'Reconstruyendo stems',writing:'Preparando archivos',done:'Separación completada'};
 function controls(){ $('separate').disabled = busy || !online || !selected; $('file').disabled = busy; $('cancel').hidden = !busy; }
@@ -8,8 +15,8 @@ function message(text){ $('status').textContent=text; $('progress-area').hidden=
 function fail(error){ $('error').textContent=error.message || String(error); $('error').hidden=false; }
 async function api(path, options={}){
   let response;
-  try { response=await fetch(engine+path,{targetAddressSpace:'loopback',...options,headers:{'X-Requested-With':'StemsStudio',...options.headers}}); }
-  catch(error){ if(error.name==='AbortError')throw error; throw new Error('No se pudo conectar con el motor local. Activa Stems Studio y permite la conexión local si el navegador lo solicita. Si Safari o este navegador la bloquean, abre BPM Studio localmente en http://127.0.0.1:8080 y permanece en la pestaña Stems Studio.'); }
+  try { response=await fetch(engine+path,{...(local?{targetAddressSpace:'loopback'}:{}),...options,headers:{'X-Requested-With':'StemsStudio',...(!local?{Authorization:`Bearer ${accessToken}`} : {}),...options.headers}}); }
+  catch(error){ if(error.name==='AbortError')throw error; throw new Error(local?'No se pudo conectar con el motor local. Activa Stems Studio y permite la conexión local. También puedes abrir BPM Studio en http://127.0.0.1:8080.':'No se pudo conectar con el servidor dedicado. Comprueba tu conexión y reintenta.'); }
   if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error || `El motor respondió ${response.status}.`);}
   return response;
 }
@@ -20,7 +27,7 @@ async function connect(){
     online=true; $('connection').textContent=health.device==='gpu'?'Motor conectado · GPU':'Motor conectado · CPU';
     $('model').textContent=`${health.preset || 'Modelo personalizado'} · ${health.model} · 44.1 kHz`;
     $('error').hidden=true;
-  }catch(error){online=false;$('connection').textContent='Motor desconectado';$('model').textContent='Activa el motor local para separar audio';fail(error);}
+  }catch(error){online=false;$('connection').textContent='Motor desconectado';$('model').textContent=local?'Activa el motor local para separar audio':'Conecta con tu clave de acceso';fail(error);}
   controls();
 }
 function clearResults(){for(const audio of document.querySelectorAll('audio'))audio.pause();for(const url of mediaURLs)URL.revokeObjectURL(url);mediaURLs=[];$('tracks').replaceChildren();$('results').hidden=true;}
@@ -39,11 +46,11 @@ async function pcm(file,token){
   for(let i=0;i<stereo.length;i++){view.setFloat32(i*8,left[i],true);view.setFloat32(i*8+4,right[i],true);}
   return bytes;
 }
-function waveform(buffer){
+function waveform(buffer,values){
   const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=100;canvas.className='wave';
   canvas.setAttribute('role','img');canvas.setAttribute('aria-label','Forma de onda del stem');
-  const peaks=new Float32Array(700);
-  for(let channel=0;channel<buffer.numberOfChannels;channel++){
+  const peaks=values?Float32Array.from(values):new Float32Array(700);
+  for(let channel=0;buffer && channel<buffer.numberOfChannels;channel++){
     const samples=buffer.getChannelData(channel);
     for(let bin=0;bin<700;bin++)for(let i=Math.floor(bin*samples.length/700);i<Math.floor((bin+1)*samples.length/700);i++)peaks[bin]=Math.max(peaks[bin],Math.abs(samples[i]));
   }
@@ -51,24 +58,31 @@ function waveform(buffer){
   peaks.forEach((value,i)=>{const h=Math.max(1,value/maximum*88);ctx.fillRect(i*2,(100-h)/2,1.5,h);});return canvas;
 }
 async function results(job,token){
+  if(!local)job=await (await api(`/api/jobs/${encodeURIComponent(job.id)}`)).json();
   const names={vocals:['Voces','Voz principal y coros'],drums:['Batería','Percusión y ritmo'],harmonics:['Armónicos','Bajo, teclados, guitarras y otros instrumentos']};
   const result=job.result;
   if(!result || !['vocals','drums','harmonics'].every(name=>result.stems.some(stem=>stem.name===name)))throw new Error('El motor no entregó los tres stems.');
   message('Descargando stems sin pérdida…');
   for(const name of ['vocals','drums','harmonics']){
     if(token!==generation)return;
-    const response=await api(`/api/jobs/${encodeURIComponent(job.id)}/stems/${name}`);
-    const bytes=await response.arrayBuffer();if(token!==generation)return;
-    const context=new AudioContext();let decoded;try{decoded=await context.decodeAudioData(bytes.slice(0));}finally{await context.close();}
+    let url, decoded, peaks;
+    if(local){
+      const response=await api(`/api/jobs/${encodeURIComponent(job.id)}/stems/${name}`);
+      const bytes=await response.arrayBuffer();if(token!==generation)return;
+      const context=new AudioContext();try{decoded=await context.decodeAudioData(bytes.slice(0));}finally{await context.close();}
+      url=URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));mediaURLs.push(url);
+    }else{
+      peaks=(await (await api(`/api/jobs/${encodeURIComponent(job.id)}/peaks/${name}`)).json()).peaks;
+      url=new URL(result.stems.find(stem=>stem.name===name).download_url,engine).href;
+    }
     if(token!==generation)return;
-    const url=URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));mediaURLs.push(url);
     const card=document.createElement('article');card.className='stem';
     const heading=document.createElement('div');heading.className='stem-head';const title=document.createElement('div');
     const h=document.createElement('h3');h.textContent=names[name][0];const small=document.createElement('small');small.textContent=names[name][1];title.append(h,small);
     const download=document.createElement('a');download.className='download';download.href=url;download.download=`${selected.name.replace(/\.[^.]+$/,'')}-${name}.wav`;download.textContent='↓ Descargar WAV';heading.append(title,download);
     const audio=document.createElement('audio');audio.controls=true;audio.preload='metadata';audio.src=url;audio.setAttribute('aria-label',`Escuchar ${names[name][0]}`);
     audio.addEventListener('play',()=>document.querySelectorAll('audio').forEach(other=>{if(other!==audio)other.pause();}));
-    card.append(heading,waveform(decoded),audio);$('tracks').append(card);$('results').hidden=false;
+    card.append(heading,waveform(decoded,peaks),audio);$('tracks').append(card);$('results').hidden=false;
   }
   message('Stems listos para escuchar y descargar.');$('progress').value=1;
 }
@@ -76,9 +90,10 @@ async function separate(){
   if(busy||!selected)return;
   const token=++generation;busy=true;jobId=null;$('error').hidden=true;clearResults();controls();$('progress').value=0;
   try{
-    const bytes=await pcm(selected,token);if(token!==generation)return;
-    message('Enviando audio al motor local…');upload=new AbortController();
-    let job=await (await api('/api/jobs',{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:bytes,signal:upload.signal})).json();
+    if(!local && selected.size>99*1024*1024)throw new Error('Selecciona un archivo inferior a 99 MB.');
+    const bytes=local?await pcm(selected,token):selected;if(token!==generation)return;
+    message(local?'Enviando audio al motor local…':'Enviando audio al servidor…');upload=new AbortController();
+    let job=await (await api(local?'/api/jobs':'/api/files',{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:bytes,signal:upload.signal})).json();
     upload=null;jobId=job.id;
     while(token===generation){
       const progress=job.progress || {};message(stages[progress.stage] || 'Procesando audio…');$('progress').value=Number(progress.fraction)||0;
@@ -96,6 +111,6 @@ for(const type of ['dragenter','dragover'])$('drop').addEventListener(type,event
 for(const type of ['dragleave','drop'])$('drop').addEventListener(type,event=>{event.preventDefault();$('drop').classList.remove('dragging');});
 $('drop').addEventListener('drop',event=>{if(event.dataTransfer.files.length===1)choose(event.dataTransfer.files[0]);});
 window.addEventListener('pagehide',()=>{upload?.abort();clearResults();});connect();
-window.addEventListener('message',event=>{if(event.source===parent&&event.origin===location.origin&&event.data?.type==='stems-studio-visibility'&&!event.data.visible)document.querySelectorAll('audio').forEach(audio=>audio.pause());});
+window.addEventListener('message',event=>{if(event.source===parent&&event.origin===parentOrigin&&event.data?.type==='stems-studio-visibility'&&!event.data.visible)document.querySelectorAll('audio').forEach(audio=>audio.pause());});
 let resizeTimer;
-new ResizeObserver(()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>parent.postMessage({type:'stems-studio-resize',height:document.body.scrollHeight+24},location.origin),80);}).observe(document.body);
+new ResizeObserver(()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>parent.postMessage({type:'stems-studio-resize',height:document.body.scrollHeight+24},parentOrigin),80);}).observe(document.body);

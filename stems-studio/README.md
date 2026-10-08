@@ -34,3 +34,10 @@ Desde la raíz: `off-the-wall-mp3-studio/.venv/bin/python -m pytest -q stems-stu
 Referencia: https://github.com/nsaintot/stemd · contrato: https://github.com/nsaintot/stemd/blob/main/docs/api.md
 
 El código del adaptador y la interfaz es propio; usa el programa instalado mediante HTTP. No se redistribuyen el binario ni los pesos de modelos de terceros.
+# Servidor dedicado
+
+La adaptación para un servidor GPU remoto está en [deploy/README.md](deploy/README.md).
+Incluye contenedor Linux, autenticación, subida con decodificación en el servidor,
+ondas calculadas en el servidor y conexión HTTPS dentro del mismo iframe.
+La contratación y la comprobación en una GPU Linux están pendientes.
+`server-config.js` conserva la dirección remota vacía hasta que exista el servidor.
