@@ -8,8 +8,8 @@ function message(text){ $('status').textContent=text; $('progress-area').hidden=
 function fail(error){ $('error').textContent=error.message || String(error); $('error').hidden=false; }
 async function api(path, options={}){
   let response;
-  try { response=await fetch(engine+path,{...options,headers:{'X-Requested-With':'StemsStudio',...options.headers}}); }
-  catch(error){ if(error.name==='AbortError')throw error; throw new Error('No se pudo conectar con el motor de tu Mac. Activa Stems Studio y pulsa Reconectar.'); }
+  try { response=await fetch(engine+path,{targetAddressSpace:'loopback',...options,headers:{'X-Requested-With':'StemsStudio',...options.headers}}); }
+  catch(error){ if(error.name==='AbortError')throw error; throw new Error('No se pudo conectar con el motor local. Activa Stems Studio y permite la conexión local si el navegador lo solicita. Si Safari o este navegador la bloquean, abre BPM Studio localmente en http://127.0.0.1:8080 y permanece en la pestaña Stems Studio.'); }
   if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error || `El motor respondió ${response.status}.`);}
   return response;
 }
