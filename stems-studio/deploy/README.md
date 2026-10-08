@@ -90,3 +90,16 @@ Fuentes oficiales:
 Falta autorización del gasto y acceso a una cuenta Runpod o a un servidor GPU
 existente. Este despliegue habilita separación de archivos de audio; no elimina
 límites de YouTube ni proporciona descargas de audio de la API de Spotify.
+
+## Verificación realizada
+
+- 11 pruebas del adaptador: autenticación remota, firmas restringidas al archivo
+  y caducidad, ondas calculadas a partir del PCM real incluso con fragmentos
+  incompletos, decodificación real de WAV con FFmpeg y salida float32 intacta.
+- Sintaxis JavaScript, script de arranque y revisión del diff sin errores.
+- La prueba de integración adicional contra el motor real de la Mac confirmó
+  GPU/Quality y aceptó la subida (202), pero alcanzó 120 segundos esperando un
+  trabajo detrás de otra separación activa. Ese intento no verifica la entrega
+  final remota. No se interrumpió la separación que ya estaba en curso.
+- La imagen Linux y el acceso desde móvil requieren validación después de
+  construir y activar el servidor. GitHub Pages publicó el código preparado.
