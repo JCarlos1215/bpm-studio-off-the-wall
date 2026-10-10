@@ -114,6 +114,15 @@ otra vez. Exporta WAV de 24 bits o FLAC a 44,1 o 48 kHz, con comparación A/B y
 volumen de reproducción igualado opcionalmente. La cancelación termina el worker;
 un cambio de ajustes invalida la copia anterior.
 
+Muestra formas de onda estéreo del original al seleccionarlo y de la copia al
+terminar. El cursor sigue la reproducción; permite tocar/clicar para posicionarse,
+usar las flechas para mover cinco segundos e Inicio/Fin. Ambas ondas conservan
+la misma escala de amplitud, sin normalizar visualmente cada archivo. Son
+envolventes resumidas de PCM decodificado localmente a 8 kHz para visualización,
+no una medición de pico verdadero; el archivo exportado conserva la frecuencia
+elegida. Solo retiene hasta 2048 pares de mínimos/máximos por canal. Cambiar
+de archivo descarta la onda anterior y cancela la generación pendiente.
+
 El tratamiento previo puede aplicar un filtro de 10 Hz y `adeclip` (reconstrucción
 aproximada de clipping). No recupera información perdida ni garantiza una mejora
 perceptual. Las mediciones de archivos cortos, especialmente LRA, requieren

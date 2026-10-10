@@ -27,12 +27,35 @@ with sync_playwright() as p:
  frame.locator('#file').wait_for()
  page.locator('#enhancerFrame').element_handle().content_frame().wait_for_load_state('load')
  frame.locator('#file').set_input_files(str(fixture))
+ frame.locator('#original-wave').wait_for(state='visible',timeout=60000)
+ original_seek=frame.locator('#original-wave .wave-seek')
+ original_seek.click(position={'x':original_seek.bounding_box()['width']/2,'y':40})
+ assert abs(frame.locator('#original').evaluate('(a)=>a.currentTime')-8)<.2
+ original_seek.press('ArrowRight')
+ assert abs(frame.locator('#original').evaluate('(a)=>a.currentTime')-13)<.2
+ original_seek.press('Home')
  frame.get_by_role('button',name='Analizar y preparar audio',exact=True).click()
  frame.locator('#status.success').wait_for(timeout=180000)
  results={name:frame.locator('#'+name).inner_text() for name in ['before-loudness','after-loudness','before-peak','after-peak','before-range','after-range','result-note']}
  print(results,flush=True)
  assert abs(float(results['after-loudness'].split()[0])+16)<=1
  assert float(results['after-peak'].split()[0])<=-1+.05
+ frame.locator('#processed-wave').wait_for(state='visible')
+ page.wait_for_timeout(100) # Allow the ResizeObserver to draw the newly visible result.
+ coverage='''(canvas,color)=>{
+  const pixels=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+  let count=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>200&&Math.abs(pixels[i]-color[0])<3&&Math.abs(pixels[i+1]-color[1])<3&&Math.abs(pixels[i+2]-color[2])<3)count++;
+  return count/(canvas.width*canvas.height);
+ }'''
+ original_coverage=frame.locator('#original-wave canvas').evaluate(coverage,[101,182,255])
+ output_coverage=frame.locator('#processed-wave canvas').evaluate(coverage,[168,224,195])
+ assert original_coverage>.2,original_coverage
+ assert .01<output_coverage<original_coverage*.7,(original_coverage,output_coverage)
+ processed_seek=frame.locator('#processed-wave .wave-seek')
+ processed_seek.click(position={'x':processed_seek.bounding_box()['width']/4,'y':40})
+ assert abs(frame.locator('#processed').evaluate('(a)=>a.currentTime')-4)<.2
+ assert abs(float(processed_seek.get_attribute('aria-valuenow'))-4)<.2
+ processed_seek.press('Home')
  with page.expect_download() as download:
   frame.locator('#download').click()
  download.value.save_as(str(output))
@@ -55,6 +78,7 @@ with sync_playwright() as p:
  frame.get_by_role('button',name='Cancelar',exact=True).click()
  assert 'cancelado' in frame.locator('#status').inner_text()
  assert frame.locator('#results').is_hidden()
+ assert frame.locator('#processed-wave').is_hidden()
  assert frame.locator('#process').is_enabled()
  # An invalid file cannot reuse an earlier download or leave controls stuck.
  frame.locator('#file').set_input_files({'name':'not-audio.txt','mimeType':'text/plain','buffer':b'not an audio file'})
@@ -78,6 +102,6 @@ with sync_playwright() as p:
  assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
  assert frame.locator('body').evaluate('()=>document.documentElement.scrollWidth<=innerWidth')
  assert not errors,errors
- print('Perfiles Natural/DJ/Potente, descarga WAV, comparación A/B, cancelación, errores y vista móvil: OK',flush=True)
+ print('Ondas y escala de amplitud, navegación por clic/teclado, perfiles, descarga, comparación A/B, cancelación, errores y vista móvil: OK',flush=True)
  b.close()
 test_directory.cleanup()

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
   <title>Preparador de audio — BPM Studio</title>
-  <link rel="stylesheet" href="./style.css?v=pitch-20261010-1">
-  <script type="module" src="./app.js?v=pitch-20261010-1"></script>
+  <link rel="stylesheet" href="./style.css?v=wave-20261010-1">
+  <script type="module" src="./app.js?v=wave-20261010-1"></script>
 </head>
 <body>
 <main class="shell">
@@ -14,7 +14,10 @@
       <p class="step">01 / TU PISTA</p><h2 id="file-heading">Carga el original</h2>
       <label class="file-picker"><span aria-hidden="true" class="upload-icon"><svg viewBox="0 0 32 32" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 22V5m-6 6 6-6 6 6M5 21v6h22v-6"/></svg></span><strong id="filename">Selecciona un archivo de audio</strong><span>MP3, WAV, FLAC, M4A, AIFF u otro formato compatible</span><input id="file" type="file" aria-label="Seleccionar audio desde Archivos"></label>
       <p class="muted small">Una pista a la vez · máximo 60 MB y 10 minutos. Conservamos tu archivo original.</p>
-      <div id="original-preview" hidden><span class="audio-label">ORIGINAL</span><audio id="original" controls preload="metadata"></audio></div>
+      <div id="original-preview" hidden><span class="audio-label">ORIGINAL</span>
+        <p id="wave-status" class="muted small" role="status"></p>
+        <div id="original-wave" class="waveform" hidden><div class="wave-seek" role="slider" tabindex="0" aria-label="Posición en el audio original" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><canvas aria-hidden="true"></canvas><div class="wave-progress"></div></div><div class="wave-caption"><span>Forma de onda · original</span><span class="wave-time">00:00 / 00:00</span></div></div>
+        <audio id="original" controls preload="metadata"></audio></div>
       <div class="engine-note"><span aria-hidden="true">◈</span><p>La primera carga del motor descarga unos 32 MB. En iPhone, mantén la página abierta durante el procesamiento.</p></div>
     </section>
     <section class="panel settings" aria-labelledby="settings-heading">
@@ -42,7 +45,10 @@
     <div class="table-wrap"><table><caption class="sr-only">Mediciones del audio original y del archivo exportado</caption><thead><tr><th>Medición</th><th>Original</th><th>Copia preparada</th></tr></thead><tbody><tr><th>Sonoridad integrada</th><td id="before-loudness">—</td><td id="after-loudness">—</td></tr><tr><th>Pico verdadero</th><td id="before-peak">—</td><td id="after-peak">—</td></tr><tr><th>Rango de sonoridad</th><td id="before-range">—</td><td id="after-range">—</td></tr></tbody></table></div>
     <p id="result-note" class="muted small"></p><label class="check"><input id="match-volume" type="checkbox" checked><span>Igualar volumen al comparar<small>Ajusta solo la reproducción; la descarga conserva el nivel procesado.</small></span></label>
     <div id="pitch-result" class="pitch-result" hidden><strong>Afinación estimada · referencia A=440 Hz</strong><p id="pitch-before"></p><p id="pitch-applied"></p><p id="pitch-after"></p><p class="muted small">Comprueba la mezcla escuchando. Una afinación consistente no demuestra que A=440 Hz fuera la intención del artista. No corrige wow/flutter ni notas individuales.</p></div>
-    <span class="audio-label">COPIA PREPARADA</span><audio id="processed" controls preload="metadata"></audio>
+    <span class="audio-label">COPIA PREPARADA</span>
+    <div id="processed-wave" class="waveform" hidden><div class="wave-seek" role="slider" tabindex="0" aria-label="Posición en la copia preparada" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><canvas aria-hidden="true"></canvas><div class="wave-progress"></div></div><div class="wave-caption"><span>Forma de onda · copia</span><span class="wave-time">00:00 / 00:00</span></div></div>
+    <p class="muted small">Toca la onda para avanzar. Con teclado: flechas para mover 5 segundos, Inicio y Fin. Ambas ondas usan la misma escala de amplitud.</p>
+    <audio id="processed" controls preload="metadata"></audio>
     <div class="compare"><button id="listen-original" type="button">A · Escuchar original</button><button id="listen-processed" type="button">B · Escuchar copia</button></div>
     <p class="muted small">Escucha a volumen moderado y revisa los transitorios. Una pista más fuerte no siempre suena mejor.</p>
   </section>

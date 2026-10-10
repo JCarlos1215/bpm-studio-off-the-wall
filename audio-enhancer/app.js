@@ -1,9 +1,30 @@
 import {inspectMedia} from '../media-inspect.js';
 import {PRESETS,validateOptions,prepareFilters,measure,render,enforcePeak} from './engine.js?v=pitch-20261010-1';
 import {measureTuning} from './tuning.js?v=pitch-20261010-1';
+import {Waveform,measureWaveform} from './waveform.js?v=wave-20261010-1';
 const $=id=>document.getElementById(id);
 if(new URLSearchParams(location.search).has('embed'))document.documentElement.classList.add('embedded');
 let selected=null,busy=false,engine=null,runId=0,originalURL=null,resultURL=null,before=null,after=null,phase=[0,0];
+const originalWave=new Waveform($('original-wave'),$('original'),'#65b6ff');
+const processedWave=new Waveform($('processed-wave'),$('processed'),'#a8e0c3');
+let previewId=0,previewEngine=null;
+function stopPreview(){previewId++;previewEngine?.terminate();previewEngine=null;}
+async function previewWave(file){
+  const id=++previewId,current=()=>id===previewId;let ffmpeg;
+  $('wave-status').textContent='Generando forma de onda…';
+  try{
+    const {FFmpeg}=await import('../vendor/ffmpeg/index.js');if(!current())return;
+    ffmpeg=new FFmpeg();previewEngine=ffmpeg;
+    await ffmpeg.load({coreURL:new URL('../vendor/core/ffmpeg-core.js',import.meta.url).href,wasmURL:new URL('../vendor/core/ffmpeg-core.wasm',import.meta.url).href});if(!current())return;
+    const bytes=new Uint8Array(await file.arrayBuffer());if(!current())return;
+    await ffmpeg.writeFile('preview-source',bytes);if(!current())return;
+    const info=await inspectMedia(ffmpeg,'preview-source');if(!current())return;
+    if(!Number.isFinite(info.duration)||info.duration<=0||info.duration>600)throw new Error('Duración no admitida');
+    const wave=await measureWaveform(ffmpeg,'preview-source',current);if(!current())return;
+    originalWave.set(wave);$('wave-status').textContent='Toca la onda para avanzar por la pista.';
+  }catch{if(current())$('wave-status').textContent='No se pudo dibujar la onda. Prueba preparando un archivo de audio compatible.';}
+  finally{ffmpeg?.terminate();if(current())previewEngine=null;}
+}
 function status(message,state=''){$('status').textContent=message;$('status').className=`status ${state}`;}
 function controls(){
   $('file').disabled=busy;
@@ -14,6 +35,7 @@ function controls(){
   pitchControls();
 }
 function clearResult(){
+  processedWave.clear();
   $('processed').pause();$('processed').removeAttribute('src');$('processed').load();
   if(resultURL)URL.revokeObjectURL(resultURL);resultURL=null;
   $('download').removeAttribute('href');$('results').hidden=true;$('pitch-result').hidden=true;
@@ -25,6 +47,7 @@ function pitchControls(){$('manual-pitch').hidden=$('pitch-mode').value!=='manua
 $('pitch-mode').addEventListener('change',pitchControls);
 $('file').addEventListener('change',()=>{
   if(busy)return;
+  stopPreview();originalWave.clear();$('wave-status').textContent='';
   clearResult();$('original').pause();if(originalURL)URL.revokeObjectURL(originalURL);originalURL=null;
   $('original').removeAttribute('src');$('original').load();$('original-preview').hidden=true;
   selected=$('file').files?.[0]??null;$('progress').hidden=true;
@@ -32,12 +55,13 @@ $('file').addEventListener('change',()=>{
     status(selected.size===0?'El archivo está vacío.':'El archivo supera 60 MB. Elige una pista más pequeña.','error');selected=null;$('file').value='';
   }else status(selected?'Archivo listo. Elige un perfil y pulsa Analizar y preparar audio.':'Carga una pista para empezar.');
   $('filename').textContent=selected?.name??'Selecciona un archivo de audio';
-  if(selected){originalURL=URL.createObjectURL(selected);$('original').src=originalURL;$('original-preview').hidden=false;}
+  if(selected){originalURL=URL.createObjectURL(selected);$('original').src=originalURL;$('original-preview').hidden=false;previewWave(selected);}
   controls();
 });
 function cancel(message='Procesamiento cancelado. El original no se ha modificado.'){
   if(!busy)return;
   runId++;engine?.terminate();engine=null;busy=false;$('progress').hidden=true;status(message);controls();
+  processedWave.clear();if(!originalWave.data)$('wave-status').textContent='Onda pendiente. Vuelve a preparar el audio para generarla.';
 }
 $('cancel').addEventListener('click',()=>cancel());
 for(const field of document.querySelectorAll('.settings input,.settings select'))field.addEventListener('change',()=>{
@@ -63,6 +87,7 @@ $('process').addEventListener('click',async()=>{
   if(!selected||busy)return;
   const id=++runId,source=selected;
   const current=()=>id===runId;
+  stopPreview();if(!originalWave.data)$('wave-status').textContent='La onda se genera durante el análisis.';
   busy=true;clearResult();$('original').pause();controls();
   let ffmpeg,timer;
   try{
@@ -79,6 +104,11 @@ $('process').addEventListener('click',async()=>{
     if(!info.streams.some(s=>s.codec_type==='audio'))throw new Error('Este archivo no contiene una pista de audio.');
     if(!Number.isFinite(info.duration)||info.duration<=0)throw new Error('No se pudo comprobar la duración del archivo. Prueba con WAV, FLAC o MP3.');
     if(info.duration>600)throw new Error('La pista supera 10 minutos. Usa un fragmento más corto.');
+    if(!originalWave.data){
+      setPhase('Dibujando la forma de onda del original…',12,14);
+      const wave=await measureWaveform(ffmpeg,'source',current);if(!current())return;
+      originalWave.set(wave);$('wave-status').textContent='Toca la onda para avanzar por la pista.';
+    }
     setPhase('Midiendo la sonoridad y los picos del original…',14,24);
     const original=await measure(ffmpeg,'source',settings);if(!current())return;
     let originalTuning=null;
@@ -106,6 +136,9 @@ $('process').addEventListener('click',async()=>{
       $('pitch-after').textContent=finalTuning.reliable?`Copia: ${signed(finalTuning.cents)} respecto a A=440 Hz.${Math.abs(finalTuning.cents)>6?' Queda una desviación estimada; revisa el resultado con una referencia.':''}`:`Copia: afinación no concluyente. ${finalTuning.reason}`;
       $('pitch-result').hidden=false;
     }
+    setPhase('Dibujando la forma de onda de la copia preparada…',98,99);
+    const exportedWave=await measureWaveform(ffmpeg,final.path,current);if(!current())return;
+    processedWave.set(exportedWave);
     const bytes=await ffmpeg.readFile(final.path);if(!current())return;
     if(!bytes.length)throw new Error('No se generó un archivo de salida.');
     resultURL=URL.createObjectURL(new Blob([bytes],{type:settings.format==='wav'?'audio/wav':'audio/flac'}));
@@ -124,13 +157,14 @@ $('process').addEventListener('click',async()=>{
     $('progress').value=100;
     status('Copia preparada y verificada. Escucha la comparación y descárgala para guardarla.','success');
   }catch(error){
+    if(current()){processedWave.clear();if(!originalWave.data)$('wave-status').textContent='Forma de onda no disponible para este archivo.';}
     if(current()){$('progress').hidden=true;status(error instanceof Error&&error.message&&!/terminated|memory access|abort|worker|UNSUPPORTED/i.test(error.message)?error.message:'No se pudo procesar la pista. Puede exceder la memoria o usar un formato no compatible; prueba un archivo más corto.','error');}
   }finally{
     clearTimeout(timer);ffmpeg?.terminate();
     if(current()){engine=null;busy=false;controls();}
   }
 });
-window.addEventListener('pagehide',()=>{cancel();if(originalURL)URL.revokeObjectURL(originalURL);if(resultURL)URL.revokeObjectURL(resultURL);});
+window.addEventListener('pagehide',()=>{stopPreview();cancel();originalWave.clear();processedWave.clear();if(originalURL)URL.revokeObjectURL(originalURL);if(resultURL)URL.revokeObjectURL(resultURL);});
 if(new URLSearchParams(location.search).has('embed')&&window.parent!==window){
   const resize=()=>window.parent.postMessage({type:'enhancer-resize',height:Math.max(document.body.scrollHeight,document.documentElement.scrollHeight)},location.origin);
   new ResizeObserver(resize).observe(document.body);window.addEventListener('load',resize);
