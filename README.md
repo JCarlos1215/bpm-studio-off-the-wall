@@ -101,3 +101,32 @@ La pestaña **Stems Studio** usa por defecto **Demucs ONNX en el dispositivo** (
 No hay contador diario de canciones o solicitudes. La memoria y velocidad del equipo siguen limitando las pistas que puede procesar; WebGPU se usa cuando está disponible; WASM en un solo hilo puede ser lento. Abre la plataforma publicada por HTTPS o el servidor local, no index.html mediante `file://`. Ver [instrucciones](stems-browser/README.md).
 
 El selector conserva **stemd Quality local** para usar la Mac, y los servicios públicos UVR5/Demucs como alternativas identificadas **con cuota**. Cambiar entre esos servicios públicos no elimina su cuota compartida. Los motores locales son distintos de Mixed In Key; no se promete igualdad de calidad con ese producto. No se creó ningún servicio de pago.
+
+### Preparador de audio
+
+La pestaña **Preparador de audio** funciona en un iframe propio, con FFmpeg
+WebAssembly ya incluido en este repositorio. Procesa una pista de hasta 60 MB y
+10 minutos por vez sin subirla. Perfiles: Natural (−16 LUFS), DJ (−12 LUFS) y
+Potente (−10 LUFS). Analiza sonoridad integrada, pico verdadero y LRA, aplica
+normalización en dos pasadas y vuelve a medir el archivo exportado. Comprueba el
+techo solicitado de −1 o −2 dBTP y, si hace falta, reduce la ganancia y verifica
+otra vez. Exporta WAV de 24 bits o FLAC a 44,1 o 48 kHz, con comparación A/B y
+volumen de reproducción igualado opcionalmente. La cancelación termina el worker;
+un cambio de ajustes invalida la copia anterior.
+
+El tratamiento previo puede aplicar un filtro de 10 Hz y `adeclip` (reconstrucción
+aproximada de clipping). No recupera información perdida ni garantiza una mejora
+perceptual. Las mediciones de archivos cortos, especialmente LRA, requieren
+interpretación. El navegador, la duración y la memoria condicionan el tiempo de
+procesamiento. La salida no conserva las etiquetas del original.
+
+Es una implementación independiente inspirada en la preparación de bibliotecas
+que describe [Platinum Notes 10](https://mixedinkey.com/platinum-notes/). No utiliza
+su código o sus algoritmos propietarios, no replica el producto ni ofrece
+corrección de afinación. Utiliza las licencias de FFmpeg ya documentadas en
+`vendor/`; el audio original se conserva sin modificar.
+
+Con `python serve_project.py --port 8080` activo, ejecuta
+`python tests/audio-enhancer.py` para comprobar el procesamiento real en Chromium,
+el archivo exportado, la comparación A/B, la cancelación, los errores de entrada
+y la interfaz móvil. Requiere Playwright y Chromium instalados.

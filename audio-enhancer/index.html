@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+  <title>Preparador de audio — BPM Studio</title>
+  <link rel="stylesheet" href="./style.css?v=enhancer-20261010-1">
+  <script type="module" src="./app.js?v=enhancer-20261010-1"></script>
+</head>
+<body>
+<main class="shell">
+  <header class="hero"><p class="eyebrow">OFF THE WALL / AUDIO STUDIO</p><h1>Preparador de audio</h1><p>Volumen consistente. Picos bajo control. Una copia lista para tu sesión.</p><span class="privacy-pill">Procesamiento local · tu audio no se sube</span></header>
+  <div class="workspace">
+    <section class="panel" aria-labelledby="file-heading">
+      <p class="step">01 / TU PISTA</p><h2 id="file-heading">Carga el original</h2>
+      <label class="file-picker"><span aria-hidden="true" class="upload-icon"><svg viewBox="0 0 32 32" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 22V5m-6 6 6-6 6 6M5 21v6h22v-6"/></svg></span><strong id="filename">Selecciona un archivo de audio</strong><span>MP3, WAV, FLAC, M4A, AIFF u otro formato compatible</span><input id="file" type="file" aria-label="Seleccionar audio desde Archivos"></label>
+      <p class="muted small">Una pista a la vez · máximo 60 MB y 10 minutos. Conservamos tu archivo original.</p>
+      <div id="original-preview" hidden><span class="audio-label">ORIGINAL</span><audio id="original" controls preload="metadata"></audio></div>
+      <div class="engine-note"><span aria-hidden="true">◈</span><p>La primera carga del motor descarga unos 32 MB. En iPhone, mantén la página abierta durante el procesamiento.</p></div>
+    </section>
+    <section class="panel settings" aria-labelledby="settings-heading">
+      <p class="step">02 / PREPARACIÓN</p><h2 id="settings-heading">Elige cómo suena</h2>
+      <fieldset class="profiles"><legend>Perfil de sonoridad</legend>
+        <label><input type="radio" name="preset" value="natural" checked><span><strong>Natural</strong><small>−16 LUFS · conserva más margen</small></span></label>
+        <label><input type="radio" name="preset" value="dj"><span><strong>DJ</strong><small>−12 LUFS · nivel más intenso</small></span></label>
+        <label><input type="radio" name="preset" value="powerful"><span><strong>Potente</strong><small>−10 LUFS · mayor reducción de picos</small></span></label>
+      </fieldset>
+      <div class="options"><label>Pico máximo<select id="peak"><option value="-1">−1 dBTP</option><option value="-2">−2 dBTP</option></select></label><label>Salida<select id="format"><option value="wav">WAV · 24 bits</option><option value="flac">FLAC · sin pérdida</option></select></label><label>Frecuencia<select id="sample-rate"><option value="44100">44,1 kHz</option><option value="48000">48 kHz</option></select></label></div>
+      <label class="check"><input id="repair" type="checkbox" checked><span>Reparación aproximada de clipping<small>Intenta reconstruir picos recortados; no recupera información perdida ni garantiza una mejora audible.</small></span></label>
+      <label class="check"><input id="remove-dc" type="checkbox" checked><span>Eliminar componente DC<small>Filtro de 10 Hz para retirar desplazamiento e infragraves.</small></span></label>
+      <div class="actions"><button id="process" class="primary" type="button" disabled>Analizar y preparar audio</button><button id="cancel" type="button" hidden>Cancelar</button></div>
+      <div id="status" class="status" role="status">Carga una pista para empezar.</div><progress id="progress" max="100" value="0" hidden></progress>
+    </section>
+  </div>
+  <section id="results" class="panel results" hidden aria-labelledby="results-heading">
+    <div class="section-heading"><div><p class="step">03 / RESULTADO VERIFICADO</p><h2 id="results-heading">Escucha y compara</h2></div><a id="download" class="download" download>Descargar copia</a></div>
+    <div class="table-wrap"><table><caption class="sr-only">Mediciones del audio original y del archivo exportado</caption><thead><tr><th>Medición</th><th>Original</th><th>Copia preparada</th></tr></thead><tbody><tr><th>Sonoridad integrada</th><td id="before-loudness">—</td><td id="after-loudness">—</td></tr><tr><th>Pico verdadero</th><td id="before-peak">—</td><td id="after-peak">—</td></tr><tr><th>Rango de sonoridad</th><td id="before-range">—</td><td id="after-range">—</td></tr></tbody></table></div>
+    <p id="result-note" class="muted small"></p><label class="check"><input id="match-volume" type="checkbox" checked><span>Igualar volumen al comparar<small>Ajusta solo la reproducción; la descarga conserva el nivel procesado.</small></span></label>
+    <span class="audio-label">COPIA PREPARADA</span><audio id="processed" controls preload="metadata"></audio>
+    <div class="compare"><button id="listen-original" type="button">A · Escuchar original</button><button id="listen-processed" type="button">B · Escuchar copia</button></div>
+    <p class="muted small">Escucha a volumen moderado y revisa los transitorios. Una pista más fuerte no siempre suena mejor.</p>
+  </section>
+  <details class="about"><summary>Acerca del procesamiento</summary><p>Implementación independiente inspirada en flujos de preparación de bibliotecas como Platinum Notes 10. No contiene su código, no es un producto de Mixed In Key y no ofrece su motor propietario ni corrección de afinación.</p><p>Usa FFmpeg para analizar sonoridad EBU R128, normalizar en dos pasadas, tratar clipping de forma aproximada y verificar el pico del archivo exportado. La intensidad final puede quedar por debajo del objetivo si el límite de picos lo exige. La reparación no convierte un archivo con pérdida en audio de estudio.</p><p>El resultado se exporta sin etiquetas del original. Conserva el archivo fuente si necesitas sus metadatos. Las estimaciones de rango de sonoridad son menos representativas en audios cortos.</p></details>
+</main>
+</body>
+</html>
