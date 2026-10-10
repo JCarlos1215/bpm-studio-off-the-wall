@@ -122,11 +122,37 @@ procesamiento. La salida no conserva las etiquetas del original.
 
 Es una implementación independiente inspirada en la preparación de bibliotecas
 que describe [Platinum Notes 10](https://mixedinkey.com/platinum-notes/). No utiliza
-su código o sus algoritmos propietarios, no replica el producto ni ofrece
-corrección de afinación. Utiliza las licencias de FFmpeg ya documentadas en
+su código o sus algoritmos propietarios ni replica el producto.
+Utiliza las licencias de FFmpeg ya documentadas en
 `vendor/`; el audio original se conserva sin modificar.
 
 Con `python serve_project.py --port 8080` activo, ejecuta
 `python tests/audio-enhancer.py` para comprobar el procesamiento real en Chromium,
 el archivo exportado, la comparación A/B, la cancelación, los errores de entrada
 y la interfaz móvil. Requiere Playwright y Chromium instalados.
+
+#### Corrección de tono / afinación global
+
+El preparador incluye corrección automática hacia temperamento igual con A=440 Hz,
+ajuste manual de −100 a +100 cents y opción desactivada. Estima el desplazamiento
+común de picos espectrales en hasta 32 ventanas de aproximadamente tres segundos,
+normalizando el peso de cada ventana. Exige concentración y coincidencia entre
+segmentos; ante silencio, ruido, afinación variable o cercanía a medio semitono,
+no aplica la corrección automática. El audio corto puede ser no concluyente.
+No identifica la referencia artística original ni elimina wow/flutter.
+
+La corrección global usa remuestreo (`aresample` / `asetrate`). **Mantener el tempo**
+añade `atempo`; puede introducir artefactos y exige comparar transitorios.
+**Vinilo** cambia la velocidad y el tono juntos, para una digitalización con error
+constante de velocidad: la duración se divide por `2^(cents/1200)` y el BPM cambia
+por ese factor. No restaura fluctuaciones de velocidad. Se vuelve a medir la
+afinación del archivo exportado, además de su sonoridad y pico. La comparación A/B
+ajusta la posición por la relación de duraciones. Las mediciones son estimaciones;
+no garantizan una mezcla armónica exacta ni afinan voces nota por nota.
+
+`node tests/audio-tuning.mjs` contrasta la estimación con acordes de desfase conocido,
+ruido, silencio y cambios de afinación. `python tests/audio-pitch.py` procesa y
+descarga WAV desde el navegador; verifica las frecuencias con FFT independiente y
+la duración exportada en modos automático, manual, desactivado y vinilo. Requiere
+NumPy y FFmpeg nativo, además de Playwright / Chromium. Ambos tests de navegador
+aceptan `BPM_TEST_BASE_URL` para verificar GitHub Pages.

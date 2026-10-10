@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
   <title>Preparador de audio — BPM Studio</title>
-  <link rel="stylesheet" href="./style.css?v=enhancer-20261010-1">
-  <script type="module" src="./app.js?v=enhancer-20261010-1"></script>
+  <link rel="stylesheet" href="./style.css?v=pitch-20261010-1">
+  <script type="module" src="./app.js?v=pitch-20261010-1"></script>
 </head>
 <body>
 <main class="shell">
@@ -27,6 +27,12 @@
       <div class="options"><label>Pico máximo<select id="peak"><option value="-1">−1 dBTP</option><option value="-2">−2 dBTP</option></select></label><label>Salida<select id="format"><option value="wav">WAV · 24 bits</option><option value="flac">FLAC · sin pérdida</option></select></label><label>Frecuencia<select id="sample-rate"><option value="44100">44,1 kHz</option><option value="48000">48 kHz</option></select></label></div>
       <label class="check"><input id="repair" type="checkbox" checked><span>Reparación aproximada de clipping<small>Intenta reconstruir picos recortados; no recupera información perdida ni garantiza una mejora audible.</small></span></label>
       <label class="check"><input id="remove-dc" type="checkbox" checked><span>Eliminar componente DC<small>Filtro de 10 Hz para retirar desplazamiento e infragraves.</small></span></label>
+      <fieldset class="pitch-settings"><legend>Corrección de tono · A = 440 Hz</legend>
+        <label>Detección y ajuste<select id="pitch-mode"><option value="auto">Automática · solo con evidencia consistente</option><option value="manual">Manual · ajuste en cents</option><option value="off">Desactivada · conservar afinación</option></select></label>
+        <label id="manual-pitch" hidden>Corrección a aplicar (100 cents = 1 semitono)<input id="pitch-cents" type="number" min="-100" max="100" step="0.1" value="0" inputmode="decimal"><small>Positivo sube el tono; negativo lo baja.</small></label>
+        <label>Cómo aplicar la corrección<select id="pitch-behavior"><option value="preserve">Mantener el tempo</option><option value="speed">Vinilo · corregir velocidad y tono juntos</option></select></label>
+        <p class="muted small">Estima la afinación global respecto a A=440 Hz. En automático deja el tono intacto si la evidencia es ambigua. El modo vinilo cambia también la duración y el BPM; úsalo si el error viene de la velocidad del tocadiscos.</p>
+      </fieldset>
       <div class="actions"><button id="process" class="primary" type="button" disabled>Analizar y preparar audio</button><button id="cancel" type="button" hidden>Cancelar</button></div>
       <div id="status" class="status" role="status">Carga una pista para empezar.</div><progress id="progress" max="100" value="0" hidden></progress>
     </section>
@@ -35,11 +41,12 @@
     <div class="section-heading"><div><p class="step">03 / RESULTADO VERIFICADO</p><h2 id="results-heading">Escucha y compara</h2></div><a id="download" class="download" download>Descargar copia</a></div>
     <div class="table-wrap"><table><caption class="sr-only">Mediciones del audio original y del archivo exportado</caption><thead><tr><th>Medición</th><th>Original</th><th>Copia preparada</th></tr></thead><tbody><tr><th>Sonoridad integrada</th><td id="before-loudness">—</td><td id="after-loudness">—</td></tr><tr><th>Pico verdadero</th><td id="before-peak">—</td><td id="after-peak">—</td></tr><tr><th>Rango de sonoridad</th><td id="before-range">—</td><td id="after-range">—</td></tr></tbody></table></div>
     <p id="result-note" class="muted small"></p><label class="check"><input id="match-volume" type="checkbox" checked><span>Igualar volumen al comparar<small>Ajusta solo la reproducción; la descarga conserva el nivel procesado.</small></span></label>
+    <div id="pitch-result" class="pitch-result" hidden><strong>Afinación estimada · referencia A=440 Hz</strong><p id="pitch-before"></p><p id="pitch-applied"></p><p id="pitch-after"></p><p class="muted small">Comprueba la mezcla escuchando. Una afinación consistente no demuestra que A=440 Hz fuera la intención del artista. No corrige wow/flutter ni notas individuales.</p></div>
     <span class="audio-label">COPIA PREPARADA</span><audio id="processed" controls preload="metadata"></audio>
     <div class="compare"><button id="listen-original" type="button">A · Escuchar original</button><button id="listen-processed" type="button">B · Escuchar copia</button></div>
     <p class="muted small">Escucha a volumen moderado y revisa los transitorios. Una pista más fuerte no siempre suena mejor.</p>
   </section>
-  <details class="about"><summary>Acerca del procesamiento</summary><p>Implementación independiente inspirada en flujos de preparación de bibliotecas como Platinum Notes 10. No contiene su código, no es un producto de Mixed In Key y no ofrece su motor propietario ni corrección de afinación.</p><p>Usa FFmpeg para analizar sonoridad EBU R128, normalizar en dos pasadas, tratar clipping de forma aproximada y verificar el pico del archivo exportado. La intensidad final puede quedar por debajo del objetivo si el límite de picos lo exige. La reparación no convierte un archivo con pérdida en audio de estudio.</p><p>El resultado se exporta sin etiquetas del original. Conserva el archivo fuente si necesitas sus metadatos. Las estimaciones de rango de sonoridad son menos representativas en audios cortos.</p></details>
+  <details class="about"><summary>Acerca del procesamiento</summary><p>Implementación independiente inspirada en flujos de preparación de bibliotecas como Platinum Notes 10. No contiene su código, no es un producto de Mixed In Key y no ofrece su motor propietario.</p><p>Usa FFmpeg para analizar sonoridad EBU R128, normalizar en dos pasadas, tratar clipping de forma aproximada y verificar el pico del archivo exportado. La intensidad final puede quedar por debajo del objetivo si el límite de picos lo exige. La reparación no convierte un archivo con pérdida en audio de estudio.</p><p>La afinación se estima en segmentos de la pista mediante picos espectrales y temperamento igual. La corrección es global: hasta medio semitono estimado automáticamente o un semitono manual. El ajuste que conserva el tempo puede introducir artefactos; compara los transitorios. No elimina variaciones de velocidad de un vinilo ni garantiza una mezcla armónica exacta.</p><p>El resultado se exporta sin etiquetas del original. Conserva el archivo fuente si necesitas sus metadatos. Las estimaciones de rango de sonoridad son menos representativas en audios cortos.</p></details>
 </main>
 </body>
 </html>

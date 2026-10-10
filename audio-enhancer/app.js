@@ -1,5 +1,6 @@
 import {inspectMedia} from '../media-inspect.js';
-import {PRESETS,validateOptions,prepareFilters,measure,render,enforcePeak} from './engine.js?v=enhancer-20261010-1';
+import {PRESETS,validateOptions,prepareFilters,measure,render,enforcePeak} from './engine.js?v=pitch-20261010-1';
+import {measureTuning} from './tuning.js?v=pitch-20261010-1';
 const $=id=>document.getElementById(id);
 if(new URLSearchParams(location.search).has('embed'))document.documentElement.classList.add('embedded');
 let selected=null,busy=false,engine=null,runId=0,originalURL=null,resultURL=null,before=null,after=null,phase=[0,0];
@@ -10,15 +11,18 @@ function controls(){
   $('process').disabled=busy||!selected;
   $('process').textContent=busy?'Procesando…':'Analizar y preparar audio';
   $('cancel').hidden=!busy;
+  pitchControls();
 }
 function clearResult(){
   $('processed').pause();$('processed').removeAttribute('src');$('processed').load();
   if(resultURL)URL.revokeObjectURL(resultURL);resultURL=null;
-  $('download').removeAttribute('href');$('results').hidden=true;
+  $('download').removeAttribute('href');$('results').hidden=true;$('pitch-result').hidden=true;
   before=after=null;$('original').volume=1;
 }
 function setPhase(message,start,end){status(message);phase=[start,end];$('progress').hidden=false;if(start===null)$('progress').removeAttribute('value');else $('progress').value=start;}
-function options(){return validateOptions({preset:document.querySelector('input[name=preset]:checked').value,peak:$('peak').value,format:$('format').value,sampleRate:$('sample-rate').value,repair:$('repair').checked,removeDC:$('remove-dc').checked});}
+function options(){const pitchMode=$('pitch-mode').value;return validateOptions({preset:document.querySelector('input[name=preset]:checked').value,peak:$('peak').value,format:$('format').value,sampleRate:$('sample-rate').value,repair:$('repair').checked,removeDC:$('remove-dc').checked,pitchMode,pitchBehavior:$('pitch-behavior').value,manualCents:pitchMode==='manual'?($('pitch-cents').value.trim()===''?NaN:$('pitch-cents').value):0});}
+function pitchControls(){$('manual-pitch').hidden=$('pitch-mode').value!=='manual';$('pitch-behavior').disabled=busy||$('pitch-mode').value==='off';}
+$('pitch-mode').addEventListener('change',pitchControls);
 $('file').addEventListener('change',()=>{
   if(busy)return;
   clearResult();$('original').pause();if(originalURL)URL.revokeObjectURL(originalURL);originalURL=null;
@@ -49,18 +53,20 @@ $('match-volume').addEventListener('change',matchVolume);
 for(const [dest,other] of [['original','processed'],['processed','original']])$(dest).addEventListener('play',()=>$(other).pause());
 async function listen(dest,other){
   const position=$(other).currentTime;$(other).pause();
-  try{if(Number.isFinite($(dest).duration))$(dest).currentTime=Math.min(position,Math.max(0,$(dest).duration-.01));await $(dest).play();}
+  const ratio=Number.isFinite($(dest).duration)&&Number.isFinite($(other).duration)&&$(other).duration>0?$(dest).duration/$(other).duration:1;
+  try{if(Number.isFinite($(dest).duration))$(dest).currentTime=Math.min(position*ratio,Math.max(0,$(dest).duration-.01));await $(dest).play();}
   catch{status('El navegador no pudo reproducir ese formato. Puedes descargar la copia o elegir salida WAV.','error');}
 }
 $('listen-original').addEventListener('click',()=>listen('original','processed'));
 $('listen-processed').addEventListener('click',()=>listen('processed','original'));
 $('process').addEventListener('click',async()=>{
   if(!selected||busy)return;
-  const id=++runId,source=selected,settings=options();
+  const id=++runId,source=selected;
   const current=()=>id===runId;
   busy=true;clearResult();$('original').pause();controls();
   let ffmpeg,timer;
   try{
+    const settings=options();
     timer=setTimeout(()=>{if(current())cancel('Se superaron 15 minutos. Prueba una pista más corta o desactiva la reparación de clipping.');},15*60*1000);
     setPhase('Cargando motor de audio local…',null,null);
     const {FFmpeg}=await import('../vendor/ffmpeg/index.js');if(!current())return;
@@ -73,11 +79,17 @@ $('process').addEventListener('click',async()=>{
     if(!info.streams.some(s=>s.codec_type==='audio'))throw new Error('Este archivo no contiene una pista de audio.');
     if(!Number.isFinite(info.duration)||info.duration<=0)throw new Error('No se pudo comprobar la duración del archivo. Prueba con WAV, FLAC o MP3.');
     if(info.duration>600)throw new Error('La pista supera 10 minutos. Usa un fragmento más corto.');
-    setPhase('Midiendo la sonoridad y los picos del original…',14,30);
+    setPhase('Midiendo la sonoridad y los picos del original…',14,24);
     const original=await measure(ffmpeg,'source',settings);if(!current())return;
+    let originalTuning=null;
+    if(settings.pitchMode!=='off'){
+      setPhase('Estimando afinación global respecto a A=440 Hz…',24,32);
+      originalTuning=await measureTuning(ffmpeg,'source',current);if(!current())return;
+      settings.pitchCents=settings.pitchMode==='manual'?settings.manualCents:originalTuning.reliable?-originalTuning.cents:0;
+    }
     let prepared=original;
     const filters=prepareFilters(settings);
-    if(filters.length){setPhase('Analizando la señal tras el tratamiento previo…',30,45);prepared=await measure(ffmpeg,'source',settings,filters);if(!current())return;}
+    if(filters.length){setPhase('Analizando la señal tras el tratamiento previo y el ajuste de tono…',32,45);prepared=await measure(ffmpeg,'source',settings,filters);if(!current())return;}
     setPhase('Normalizando la sonoridad y controlando los picos…',45,78);
     const output=`prepared.${settings.format}`;
     await render(ffmpeg,'source',output,settings,prepared);if(!current())return;
@@ -85,6 +97,15 @@ $('process').addEventListener('click',async()=>{
     const exported=await measure(ffmpeg,output,settings);if(!current())return;
     setPhase('Comprobando el límite final de picos…',94,99);
     const final=await enforcePeak(ffmpeg,output,exported,settings);if(!current())return;
+    if(originalTuning){
+      setPhase('Comprobando la afinación de la copia exportada…',96,99);
+      const finalTuning=await measureTuning(ffmpeg,final.path,current);if(!current())return;
+      const signed=value=>`${value>0?'+':''}${value.toFixed(1)} cents`;
+      $('pitch-before').textContent=originalTuning.reliable?`Original: ${signed(originalTuning.cents)} respecto a A=440 Hz.`:`Original: no concluyente. ${originalTuning.reason}`;
+      $('pitch-applied').textContent=`Corrección aplicada: ${signed(settings.pitchCents)} · ${settings.pitchBehavior==='speed'?'velocidad y tono juntos (cambia el BPM)':'manteniendo el tempo'}.${settings.pitchMode==='auto'&&!originalTuning.reliable?' El modo automático conservó la afinación.':''}`;
+      $('pitch-after').textContent=finalTuning.reliable?`Copia: ${signed(finalTuning.cents)} respecto a A=440 Hz.${Math.abs(finalTuning.cents)>6?' Queda una desviación estimada; revisa el resultado con una referencia.':''}`:`Copia: afinación no concluyente. ${finalTuning.reason}`;
+      $('pitch-result').hidden=false;
+    }
     const bytes=await ffmpeg.readFile(final.path);if(!current())return;
     if(!bytes.length)throw new Error('No se generó un archivo de salida.');
     resultURL=URL.createObjectURL(new Blob([bytes],{type:settings.format==='wav'?'audio/wav':'audio/flac'}));

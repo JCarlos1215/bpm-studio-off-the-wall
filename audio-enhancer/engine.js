@@ -1,13 +1,15 @@
 // Independent DSP pipeline using the repository's FFmpeg build.
 // Loudness measurements: FFmpeg loudnorm, EBU R128 / ITU BS.1770.
+import {pitchFilters} from './tuning.js?v=pitch-20261010-1';
 export const PRESETS = {
   natural: {label:'Natural', loudness:-16, range:11},
   dj: {label:'DJ', loudness:-12, range:9},
   powerful: {label:'Potente', loudness:-10, range:7},
 };
-export function validateOptions({preset='natural',peak=-1,repair=true,removeDC=true,format='wav',sampleRate=44100}={}) {
+export function validateOptions({preset='natural',peak=-1,repair=true,removeDC=true,format='wav',sampleRate=44100,pitchMode='auto',pitchBehavior='preserve',manualCents=0}={}) {
   if (!PRESETS[preset] || ![-1,-2].includes(Number(peak)) || !['wav','flac'].includes(format) || ![44100,48000].includes(Number(sampleRate))) throw new Error('Los ajustes de procesamiento no son válidos.');
-  return {preset,peak:Number(peak),repair:Boolean(repair),removeDC:Boolean(removeDC),format,sampleRate:Number(sampleRate)};
+  if(!['off','auto','manual'].includes(pitchMode)||!['preserve','speed'].includes(pitchBehavior)||!Number.isFinite(Number(manualCents))||Math.abs(Number(manualCents))>100)throw new Error('El ajuste de tono debe estar entre −100 y +100 cents.');
+  return {preset,peak:Number(peak),repair:Boolean(repair),removeDC:Boolean(removeDC),format,sampleRate:Number(sampleRate),pitchMode,pitchBehavior,manualCents:Number(manualCents),pitchCents:0};
 }
 export function parseMeasurement(lines) {
   const text=lines.join('\n');
@@ -20,7 +22,7 @@ export function parseMeasurement(lines) {
   return measurement;
 }
 export function prepareFilters(options) {
-  return [options.removeDC?'highpass=f=10':null,options.repair?'adeclip':null].filter(Boolean);
+  return [options.removeDC?'highpass=f=10':null,options.repair?'adeclip':null,...pitchFilters(options.pitchCents??0,options.pitchBehavior??'preserve')].filter(Boolean);
 }
 export function loudnessFilter(options,measurement=null) {
   const preset=PRESETS[options.preset];
