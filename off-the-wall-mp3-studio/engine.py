@@ -441,9 +441,7 @@ def readable_error(error):
     if 'sign in' in lower or 'not a bot' in lower or 'confirm you’re not' in lower:
         if 'youtube' not in lower:
             return 'La plataforma requiere verificación o inicio de sesión para acceder a este audio.'
-        if os.getenv('YTDLP_COOKIES_FILE', '').strip():
-            return 'YouTube rechazó la sesión del servidor. Puede haber caducado o la conexión del servidor puede estar bloqueada. Consulta la configuración de YouTube del servidor.'
-        return 'YouTube solicita verificación al servidor que descarga el audio. Configura una sesión de YouTube en el servidor o usa un enlace de SoundCloud disponible.'
+        return 'YouTube no permitió descargar este enlace porque requiere verificación. Inténtalo más tarde.'
     if 'Failed to extract any player response' in message:
         return ('YouTube no devolvió una respuesta válida al servidor. Revisa la versión de '
                 'yt-dlp, sus componentes EJS y Node.js 22 o posterior en /api/status; '

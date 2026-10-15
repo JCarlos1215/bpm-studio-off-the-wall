@@ -78,10 +78,15 @@ def test_unconfigured_session_does_not_create_cookies():
 
 def test_youtube_challenge_error_is_distinct_from_other_errors(monkeypatch):
     error = ValueError("ERROR: [youtube] Sign in to confirm you're not a bot")
-    assert 'servidor' in engine.readable_error(error)
+    message = engine.readable_error(error)
+    assert 'YouTube' in message
+    assert 'verificación' in message
+    assert 'Configura' not in message
+    assert 'SoundCloud' not in message
     assert 'Spotify' not in engine.readable_error(error)
     monkeypatch.setenv('YTDLP_COOKIES_FILE', '/private/session.txt')
-    assert 'rechazó la sesión' in engine.readable_error(error)
+    assert engine.readable_error(error) == message
+    assert '/private/' not in message
     assert engine.readable_error(ValueError('robot dance not available')) == 'robot dance not available'
 
 
