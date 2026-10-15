@@ -48,6 +48,11 @@ def create_app(data_dir=None):
         response.headers['Content-Security-Policy'] = f"default-src 'self'; img-src 'self' https: data:; media-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-src https://www.youtube.com https://w.soundcloud.com; frame-ancestors {frame_ancestors}; base-uri 'self'; form-action 'self'"
         if request.path.startswith('/api/'):
             response.headers['Cache-Control'] = 'no-store'
+        if request.path == '/api/spotify/playlist':
+            origin = request.headers.get('Origin', '')
+            if origin in {'https://jcarlos1215.github.io', 'http://127.0.0.1:8080', 'http://localhost:8080'}:
+                response.headers['Access-Control-Allow-Origin'] = origin
+                response.headers.add('Vary', 'Origin')
         return response
 
     @app.errorhandler(Exception)
@@ -97,6 +102,11 @@ def create_app(data_dir=None):
     @app.get('/api/jobs')
     def jobs():
         return jsonify(jobs=store.list())
+
+    @app.get('/api/spotify/playlist')
+    def spotify_playlist():
+        from spotify_playlist import resolve_playlist
+        return jsonify(resolve_playlist(request.args.get('url', '')))
 
     @app.post('/api/jobs')
     def create():

@@ -98,5 +98,5 @@ const spotifyFrame=$('spotifyFrame');
 window.addEventListener('message',event=>{
   if(event.source!==spotifyFrame.contentWindow||event.origin!==location.origin||event.data?.type!=='spotify-utils-resize')return;
   const height=Number(event.data.height);
-  if(Number.isFinite(height))spotifyFrame.style.height=`${Math.max(720,Math.min(height,6000))}px`;
+  if(Number.isFinite(height))spotifyFrame.style.height=`${Math.max(720,Math.min(height,12000))}px`;
 });

@@ -51,3 +51,33 @@ Con `python serve_project.py --port 8080` activo, ejecuta:
 Requiere Playwright, Chromium en `/usr/bin/chromium` y FFmpeg/ffprobe. Ambas aceptan
 `BPM_TEST_BASE_URL`. La prueba en vivo permite `BPM_TEST_ARTIFACT_DIR` para conservar
 capturas de escritorio y móvil; los archivos de audio de prueba se eliminan.
+
+## Playlist ZIP y contadores
+
+Los cuatro contadores corresponden a intentos de conversión **de la sesión del
+iframe**: total solicitado (incluye pendientes/cancelados), en procesamiento,
+archivos de audio recibidos completos y fallos. Se actualizan tanto al preparar
+un MP3 como al descargar una playlist; no cuentan la búsqueda o reproducción.
+Se reinician al recargar, y los archivos se conservan únicamente en memoria.
+
+Se puede añadir cada resultado a la playlist, pegar líneas `Título - Artista` o
+importar un enlace completo de playlist pública de Spotify. El importador usa
+`/api/spotify/playlist` del **backend Render existente de BPM Studio**, que solo
+lee metadatos de `open.spotify.com/embed/playlist/{id}`. No descarga audio, no usa
+las credenciales de Spotify ni modifica playlists. Esta ruta valida dominio,
+HTTPS y formato de ID, y admite CORS de GitHub Pages y localhost:8080. El audio
+continúa usando exclusivamente la API/proxy de **alokhamil.my.id**.
+
+Spotify puede limitar las canciones que expone en el embed: las listas privadas,
+personalizadas o inaccesibles no se importan. Se muestran hasta 50 canciones por
+tanda, indicando cuándo se descartan más por el límite. La playlist se puede
+editar antes de descargarla. Las canciones se reciben una por una y se empaquetan
+localmente como ZIP STORE (MP3 ya está comprimido), con nombres numerados UTF-8,
+`playlist.m3u8` y `reporte.txt`. Límites: 50 canciones, 64 MB por archivo y 150 MB
+de audio por ZIP. La generación calcula CRC32 por bloques y permite cancelar.
+
+Si una pista falla, se continúa con las demás y se identifica el ZIP como parcial.
+Si cancelas, puedes crear un ZIP con las que ya estaban listas. Reiniciar la tanda
+o editar la playlist invalida el enlace ZIP anterior. No se persisten archivos
+al recargar. `python tests/spotify-playlist.py` comprueba ZIP real, CRC, nombres
+Unicode, canciones intactas, reportes, contadores, importación, errores y cancelación.
