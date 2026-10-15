@@ -165,3 +165,12 @@ descarga WAV desde el navegador; verifica las frecuencias con FFT independiente 
 la duración exportada en modos automático, manual, desactivado y vinilo. Requiere
 NumPy y FFmpeg nativo, además de Playwright / Chromium. Ambos tests de navegador
 aceptan `BPM_TEST_BASE_URL` para verificar GitHub Pages.
+
+### Spotify Utils
+
+La nueva pestaña **Spotify Utils** carga el iframe local `spotify-utils/`, adaptación
+estática del frontend de [TheyanzXD/spotify-utils](https://github.com/TheyanzXD/spotify-utils).
+Usa exclusivamente **https://alokhamil.my.id/** como API y proxy para búsqueda,
+reproducción y descarga. Incluye lista de resultados, reproductor con anterior y
+siguiente, avance automático y guardado de MP3 sin salir del iframe. La disponibilidad
+y la versión del audio dependen del proveedor. Ver [detalles y créditos](spotify-utils/README.md).
