@@ -1,16 +1,17 @@
 """Browser integration with real WASM DSP and native verification of exports."""
 import json,os,re,subprocess,tempfile,zipfile
 from pathlib import Path
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright,expect
 base=os.environ.get('BPM_TEST_BASE_URL','http://127.0.0.1:8080').rstrip('/')
 artifacts=Path('/workspace/shared/downloads');artifacts.mkdir(parents=True,exist_ok=True)
 with tempfile.TemporaryDirectory() as directory,sync_playwright() as p:
  root=Path(directory);fixture=root/'original.wav'
  subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','aevalsrc=0.16*sin(2*PI*220*t)+0.04*sin(2*PI*4000*t)|0.12*sin(2*PI*220*t)+0.03*sin(2*PI*6000*t):s=44100:d=8','-c:a','pcm_s16le',str(fixture)],check=True)
  browser=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=browser.new_page(viewport={'width':1365,'height':1000},accept_downloads=True)
- errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+ errors=[];page.on('pageerror',lambda e:errors.append(str(e)));pending=[]
+ page.route('**/mastering-studio/app.js*',lambda r:pending.append(r))
  page.goto(base+'/',wait_until='domcontentloaded');assert page.locator('#masteringFrame').get_attribute('src')=='about:blank'
- page.get_by_role('button',name='Mastering Studio',exact=True).click();f=page.frame_locator('#masteringFrame');f.locator('#file').set_input_files(str(fixture))
+ page.get_by_role('button',name='Mastering Studio',exact=True).click();f=page.frame_locator('#masteringFrame');f.locator('#demo').wait_for();assert f.locator('#demo').is_disabled();assert f.locator('#file').is_disabled();assert pending;pending[0].continue_();expect(f.locator('#demo')).to_be_enabled(timeout=30000);f.locator('#file').set_input_files(str(fixture))
  f.locator('#process').wait_for(state='visible');page.wait_for_function("!document.querySelector('#masteringFrame').contentDocument.querySelector('#process').disabled",timeout=180000)
  assert 'Original analizado' in f.locator('#status').inner_text()
  before=float(f.locator('#metric-lufs').inner_text());assert before<-10
@@ -65,5 +66,6 @@ with tempfile.TemporaryDirectory() as directory,sync_playwright() as p:
  assert f.locator('#batch-save').is_visible()
  page.screenshot(path=str(artifacts/'mastering-studio-mobile.png'),full_page=True)
  page.set_viewport_size({'width':1440,'height':1000});page.screenshot(path=str(artifacts/'mastering-studio-desktop.png'),full_page=True)
+ f.locator('#eq-only').click();assert f.locator('[data-setting=width]').input_value()=='1';assert not f.locator('[data-setting=normalize]').is_checked();assert not f.locator('[data-setting=bus]').is_checked()
  assert not errors,errors
  browser.close();print('Mastering: real multiband/de-harsh/drive/mono FLAC16 48k, peaks, A/B data, reference, JSON sessions, cancellation, two-file ZIP and mobile: OK')
