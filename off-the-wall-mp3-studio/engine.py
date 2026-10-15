@@ -261,6 +261,10 @@ class JobStore:
         try:
             check()
             self.update(identifier, status='resolving')
+            if options.get('engine') == 'apify':
+                import apify_media
+                apify_media.run(self, identifier, folder, event, check)
+                return
             title, tracks = providers.resolve(self.get(identifier)['query'], options['playlist'])
             check()
             folder.mkdir(exist_ok=True)
@@ -288,7 +292,11 @@ class JobStore:
                 if track['status'] not in TERMINAL:
                     self.update(identifier, index, status='cancelled')
         except Exception as error:
-            self.update(identifier, status='failed', error=readable_error(error))
+            message = readable_error(error)
+            self.update(identifier, status='failed', error=message)
+            for index, track in enumerate(self.get(identifier)['tracks']):
+                if track['status'] not in TERMINAL:
+                    self.update(identifier, index, status='failed', error=message)
         finally:
             for path in folder.glob('source-*'):
                 path.unlink(missing_ok=True)

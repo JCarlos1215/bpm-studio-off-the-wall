@@ -4,7 +4,10 @@ from app import create_app
 ORIGIN='https://jcarlos1215.github.io'
 HEADERS={'Origin':ORIGIN,'X-Requested-With':'AllToMP3'}
 @pytest.fixture
-def application(tmp_path):
+def application(tmp_path,monkeypatch):
+ monkeypatch.setenv('APIFY_TOKEN','test-secret')
+ monkeypatch.setenv('APIFY_TASK_ID','task123')
+ monkeypatch.setenv('APIFY_DOWNLOAD_HOSTS','bucket.example.org')
  app=create_app(tmp_path)
  yield app
  app.extensions['jobs'].executor.shutdown(wait=True)
@@ -13,11 +16,11 @@ def test_preflight_only_trusted_origins(application):
  assert r.status_code==200 and r.headers['Access-Control-Allow-Origin']==ORIGIN
  assert 'X-Requested-With' in r.headers['Access-Control-Allow-Headers']
  assert 'Access-Control-Allow-Origin' not in c.options('/api/media/jobs',headers={'Origin':'https://evil.example'}).headers
-@pytest.mark.parametrize('url',['https://www.youtube.com/watch?v=jNQXAC9IVRw','https://soundcloud.com/artist/track'])
+@pytest.mark.parametrize('url',['https://www.youtube.com/watch?v=jNQXAC9IVRw'])
 def test_media_accepts_supported_link_without_changing_legacy_security(application,url):
  create=Mock(return_value={'id':'a'*32,'status':'queued','tracks':[]});application.extensions['jobs'].create=create;c=application.test_client()
  r=c.post('/api/media/jobs',headers=HEADERS,json={'url':url,'bitrate':192,'playlist':False})
- assert r.status_code==202 and create.call_args.args==(url,{'bitrate':192,'playlist':False,'tags':True,'lyrics':False})
+ assert r.status_code==202 and create.call_args.args==(url,{'bitrate':192,'playlist':False,'tags':True,'lyrics':False,'engine':'apify'})
  assert c.post('/api/jobs',headers=HEADERS,json={'query':url}).status_code==403
  assert c.post('/api/media/jobs',headers={**HEADERS,'Origin':'https://evil.example'},json={'url':url}).status_code==403
  assert c.post('/api/media/jobs',headers={'Origin':ORIGIN},json={'url':url}).status_code==403

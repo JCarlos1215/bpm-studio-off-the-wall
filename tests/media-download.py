@@ -5,10 +5,11 @@ base=os.environ.get('BPM_TEST_BASE_URL','http://127.0.0.1:8080').rstrip('/')
 with sync_playwright() as p,tempfile.TemporaryDirectory() as temp:
  fixture=Path(temp)/'tone.mp3';subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','sine=frequency=440:duration=1','-c:a','libmp3lame',str(fixture)],check=True);audio=fixture.read_bytes()
  browser=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);page=browser.new_page(viewport={'width':390,'height':844},accept_downloads=True)
- errors=[];page.on('pageerror',lambda e:errors.append(str(e)));state={'mode':'ready','cancelled':False,'poll':0};identifier='a'*32
+ errors=[];page.on('pageerror',lambda e:errors.append(str(e)));state={'mode':'ready','cancelled':False,'poll':0,'configured':True};identifier='a'*32
  def route(r):
   req=r.request;path=req.url.split('8093')[-1];headers={'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,OPTIONS','access-control-allow-headers':'Content-Type,X-Requested-With'}
   if req.method=='OPTIONS':r.fulfill(headers=headers);return
+  if path.endswith('/config'):r.fulfill(headers=headers,json={'provider':'apify','configured':state['configured'],'message':'Apify listo.' if state['configured'] else 'Apify pendiente de configurar.'});return
   if path.endswith('/download'):r.fulfill(headers=headers,content_type='audio/mpeg',body=audio);return
   if path.endswith('/cancel'):state['cancelled']=True;r.fulfill(headers=headers,json={'job':{'id':identifier,'status':'cancelled','tracks':[]}});return
   if req.method=='POST':
@@ -30,5 +31,8 @@ with sync_playwright() as p,tempfile.TemporaryDirectory() as temp:
  state['mode']='hold';page.locator('#media-submit').click();page.wait_for_function("document.querySelector('#media-tracks li')?.textContent.includes('20%')")
  page.locator('#media-cancel').click();page.wait_for_function("!document.getElementById('media-submit').disabled")
  assert state['cancelled'];assert page.locator('#stat-processing').inner_text()=='0';assert page.locator('#media-save').is_hidden()
+ state['configured']=False
+ page.reload(wait_until='load');page.wait_for_function("document.querySelector('#media-status').textContent.includes('pendiente')")
+ assert page.locator('#media-submit').is_disabled()
  assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');assert not errors,errors
  browser.close();print('Descarga MP3 intacta, progreso, contadores, HTTP 429 visible, cancelación y vista móvil: OK')

@@ -1,4 +1,4 @@
-import {initMedia} from './media.js?v=media-20261014-2';
+import {initMedia} from './media.js?v=apify-20261015-1';
 import {createZip} from './zip.js?v=playlist-20261014-1';
 // Static adaptation of TheyanzXD/spotify-utils: API and media remain on the requested provider.
 const API=new URL('https://alokhamil.my.id/');

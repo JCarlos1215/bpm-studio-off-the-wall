@@ -3,10 +3,10 @@ const $=id=>document.getElementById(id);
 const terminal=new Set(['completed','partial','failed','cancelled']);
 const labels={queued:'En cola',resolving:'Leyendo enlace',processing:'Procesando',searching:'Buscando audio',downloading:'Descargando',converting:'Convirtiendo a MP3',tagging:'Añadiendo etiquetas',completed:'Lista',partial:'Parcial',failed:'Con error',cancelled:'Cancelada'};
 export function initMedia(onStates){
- let active=null,sequence=0,objectURL=null;
+ let active=null,sequence=0,objectURL=null,configured=false;
  const status=(text,state='')=>{$('media-status').textContent=text;$('media-status').className=`status ${state}`;};
  const clear=()=>{if(objectURL)URL.revokeObjectURL(objectURL);objectURL=null;$('media-save').hidden=true;$('media-save').removeAttribute('href');};
- const controls=busy=>{for(const id of ['media-url','media-bitrate','media-playlist','media-submit'])$(id).disabled=busy;$('media-cancel').hidden=!busy;};
+ const controls=busy=>{for(const id of ['media-url','media-bitrate','media-playlist','media-submit'])$(id).disabled=busy||!configured;$('media-cancel').hidden=!busy;};
  async function api(path,options={}){
   const response=await fetch(new URL(path,BACKEND),{...options,headers:{'Content-Type':'application/json','X-Requested-With':'AllToMP3',...options.headers}});
   let data;try{data=await response.json();}catch{throw new Error('El servidor se está iniciando o no pudo responder. Intenta de nuevo en un minuto.');}
@@ -24,9 +24,9 @@ export function initMedia(onStates){
  }
  $('media-cancel').addEventListener('click',()=>cancel(active));
  $('media-form').addEventListener('submit',async event=>{
-  event.preventDefault();if(active)return;
-  let url;try{url=new URL($('media-url').value.trim());if(url.protocol!=='https:'||url.username||url.password||url.port||!['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com','youtu.be','soundcloud.com','www.soundcloud.com','m.soundcloud.com'].includes(url.hostname))throw new Error();}catch{status('Pega un enlace HTTPS de YouTube o SoundCloud.','error');return;}
-  clear();$('media-tracks').replaceChildren();const run={key:`media-${++sequence}`,abort:new AbortController(),id:null,cancelled:false};active=run;controls(true);onStates(run.key,['processing']);$('media-progress').hidden=false;$('media-progress').removeAttribute('value');status('Conectando con yt-dlp…');
+  event.preventDefault();if(active||!configured)return;
+  let url;try{url=new URL($('media-url').value.trim());if(url.protocol!=='https:'||url.username||url.password||url.port||!['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com','youtu.be'].includes(url.hostname))throw new Error();}catch{status('Pega un enlace HTTPS de un video de YouTube.','error');return;}
+  clear();$('media-tracks').replaceChildren();const run={key:`media-${++sequence}`,abort:new AbortController(),id:null,cancelled:false};active=run;controls(true);onStates(run.key,['processing']);$('media-progress').hidden=false;$('media-progress').removeAttribute('value');status('Conectando con Apify…');
   const timer=setTimeout(()=>{run.timedOut=true;cancel(run);},20*60*1000);
   try{
    const creation=new AbortController(),creationTimer=setTimeout(()=>creation.abort(),90000);let created;
@@ -62,5 +62,6 @@ export function initMedia(onStates){
   finally{clearTimeout(timer);if(run.id&&run.cancelled)onStates(run.key,(run.lastStates||['processing']).map(s=>['ready','error'].includes(s)?s:'canceled'));if(active===run){active=null;controls(false);$('media-cancel').disabled=false;$('media-progress').hidden=$('media-save').hidden;}}
  });
  controls(false);
+ api('/api/media/config').then(config=>{configured=config.configured===true&&config.provider==='apify';status(config.message||'Apify pendiente de configurar.',configured?'':'error');controls(false);}).catch(()=>{status('No se pudo consultar la configuración de Apify. Recarga para reintentar.','error');});
  window.addEventListener('pagehide',()=>{if(active?.id)fetch(new URL(`/api/media/jobs/${active.id}/cancel`,BACKEND),{method:'POST',headers:{'X-Requested-With':'AllToMP3'},keepalive:true}).catch(()=>{});active?.abort.abort();clear();});
 }

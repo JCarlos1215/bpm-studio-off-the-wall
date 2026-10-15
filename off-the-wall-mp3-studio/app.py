@@ -111,6 +111,11 @@ def create_app(data_dir=None):
     def jobs():
         return jsonify(jobs=store.list())
 
+    @app.get('/api/media/config')
+    def media_config():
+        import apify_media
+        return jsonify(apify_media.configuration())
+
     @app.post('/api/media/jobs')
     def media_create():
         payload = request.get_json()
@@ -134,7 +139,20 @@ def create_app(data_dir=None):
         playlist = payload.get('playlist', False)
         if type(bitrate) is not int or bitrate not in (128, 192, 256, 320) or type(playlist) is not bool:
             raise ValueError('Opciones de descarga no válidas.')
-        return jsonify(job=store.create(query, {'bitrate': bitrate, 'playlist': playlist, 'tags': True, 'lyrics': False})), 202
+        import apify_media
+        if provider != 'youtube' or list_path:
+            raise ValueError('Apify admite aquí enlaces de videos individuales de YouTube. Las playlists de Spotify conservan su descarga ZIP.')
+        query = 'https://www.youtube.com/watch?v=' + video
+        if not apify_media.configuration()['configured']:
+            return jsonify(error=apify_media.configuration()['message']), 503
+        # Serialize admission so the daily paid-run cap cannot race across requests.
+        with store.lock:
+            import time
+            today = int(time.time() // 86400)
+            paid = sum(j.get('options', {}).get('engine') == 'apify' and int(j['created_at'] // 86400) == today for j in store.list())
+            if paid >= 5:
+                return jsonify(error='Se alcanzó el límite de 5 solicitudes de Apify por día (UTC).'), 429
+            return jsonify(job=store.create(query, {'bitrate': bitrate, 'playlist': playlist, 'tags': True, 'lyrics': False, 'engine': 'apify'})), 202
 
     @app.get('/api/media/jobs/<identifier>')
     def media_job(identifier):

@@ -82,33 +82,25 @@ o editar la playlist invalida el enlace ZIP anterior. No se persisten archivos
 al recargar. `python tests/spotify-playlist.py` comprueba ZIP real, CRC, nombres
 Unicode, canciones intactas, reportes, contadores, importación, errores y cancelación.
 
-## YouTube y SoundCloud con yt-dlp
+## YouTube mediante Apify
 
-El formulario de enlaces usa el backend existente de BPM Studio mediante las rutas
-`/api/media/jobs`, `/api/media/jobs/{id}`, `/cancel`, `/tracks/{index}/download` y
-`/archive`. Convierte a MP3 (128, 192, 256 o 320 kbps), muestra progreso, permite
-cancelar y guarda MP3 o ZIP desde un Blob dentro del iframe. Los contadores también
-incluyen estos trabajos. No sustituye un video solicitado por una canción de otro
-sitio. Límites heredados del servidor: 30 minutos por pista, 20 pistas por lista en
-Render; recepción máxima de 150 MB y seguimiento de hasta 20 minutos por solicitud.
+Download Manager usa una tarea del actor solicitado de Apify. La configuración,
+las limitaciones y el estado pendiente de verificación real están en [APIFY.md](APIFY.md).
+El backend antiguo conserva sus dependencias para las otras herramientas; el
+formulario de Download Manager no usa yt-dlp ni cambia de motor si Apify falla.
 
-En GitHub Pages usa Render; en localhost:8080 usa el servidor local :8093. El nuevo
-CORS queda limitado a estas rutas y a GitHub Pages / localhost:8080. Los POST siguen
-requiriendo `X-Requested-With: AllToMP3`; la protección de los endpoints antiguos no
-se relajó. Se validan proveedor, enlaces de video/lista y calidad antes de crear
-trabajos. El audio se descarga con yt-dlp y se convierte con FFmpeg. La versión de
-yt-dlp se actualizó a `2026.10.10.233141.dev0`, comprobada en PyPI.
+El formulario solo admite videos individuales públicos de YouTube. Permite
+preparar MP3 (128/192/256/320 kbps finales) o empaquetar ese MP3 en ZIP. Las
+playlists de Spotify conservan su importación y ZIP mediante alokhamil.my.id.
+SoundCloud y las playlists YouTube no son compatibles con este adaptador.
 
-Los sitios proporcionados se revisaron como posibles proveedores, pero no se
-anuncian como alternativas operativas: `ytdn.netlify.app` ofrece la aplicación de
-escritorio ytDownloader, no una API de conversión; Y2Mate permite autenticación de
-su flujo público pero rechazó iniciar la conversión (403); SaveFrom y
-`v39.www-y2mate.com` no fueron accesibles desde el entorno. No se integraron sus
-scripts publicitarios, ventanas emergentes ni redirecciones. No se eluden captchas,
-autenticación o bloqueos. YouTube devolvió 429 en la prueba inicial del servidor;
-se muestra ese error y se puede reintentar cuando el proveedor lo permita.
+`GET /api/media/config` indica si están presentes las variables de servidor.
+Sin ellas el cliente deja el formulario deshabilitado y el backend responde 503
+sin crear ejecuciones. Las rutas de trabajos, seguimiento, cancelación y entrega
+conservan su CORS limitado a GitHub Pages y localhost:8080. No se exponen tokens,
+URLs firmadas ni credenciales de almacenamiento al navegador.
 
-Pruebas: `python tests/media-download.py` valida recepción de MP3, progreso,
-contadores, error 429, cancelación y móvil con backend simulado; en
-`off-the-wall-mp3-studio/`, `python -m pytest tests/test_media.py` comprueba CORS,
-validación y rutas. SoundCloud se comprobó con una conversión real en Render.
+Pruebas de backend: `python -m pytest tests/test_apify_media.py tests/test_media.py`.
+Prueba del cliente con respuestas simuladas: `python tests/media-download.py`.
+Estas pruebas no acreditan una descarga real desde el actor: faltan credenciales
+y comprobar su contrato de salida con almacenamiento configurado.
