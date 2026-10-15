@@ -82,25 +82,19 @@ o editar la playlist invalida el enlace ZIP anterior. No se persisten archivos
 al recargar. `python tests/spotify-playlist.py` comprueba ZIP real, CRC, nombres
 Unicode, canciones intactas, reportes, contadores, importación, errores y cancelación.
 
-## YouTube mediante Apify
+## API propia de descargas
 
-Download Manager usa una tarea del actor solicitado de Apify. La configuración,
-las limitaciones y el estado pendiente de verificación real están en [APIFY.md](APIFY.md).
-El backend antiguo conserva sus dependencias para las otras herramientas; el
-formulario de Download Manager no usa yt-dlp ni cambia de motor si Apify falla.
+Download Manager permite varias solicitudes simultáneas con tarjetas de progreso,
+cancelación y archivos independientes. El servidor controla la concurrencia real.
+La API nativa no requiere credenciales de proveedores ni impone cuotas mensuales;
+la cola y los recursos tienen límites configurables.
 
-El formulario solo admite videos individuales públicos de YouTube. Permite
-preparar MP3 (128/192/256/320 kbps finales) o empaquetar ese MP3 en ZIP. Las
-playlists de Spotify conservan su importación y ZIP mediante alokhamil.my.id.
-SoundCloud y las playlists YouTube no son compatibles con este adaptador.
+Configuración, nuevo servicio Render y perfil de 100 trabajadores:
+[../bpm-download-api/README.md](../bpm-download-api/README.md).
+El formulario Servidor de descargas permite conectar la URL HTTPS real de una nueva
+instancia y guardarla en el navegador. La instancia existente es el valor inicial.
 
-`GET /api/media/config` indica si están presentes las variables de servidor.
-Sin ellas el cliente deja el formulario deshabilitado y el backend responde 503
-sin crear ejecuciones. Las rutas de trabajos, seguimiento, cancelación y entrega
-conservan su CORS limitado a GitHub Pages y localhost:8080. No se exponen tokens,
-URLs firmadas ni credenciales de almacenamiento al navegador.
-
-Pruebas de backend: `python -m pytest tests/test_apify_media.py tests/test_media.py`.
-Prueba del cliente con respuestas simuladas: `python tests/media-download.py`.
-Estas pruebas no acreditan una descarga real desde el actor: faltan credenciales
-y comprobar su contrato de salida con almacenamiento configurado.
+La recepción de archivos se limita a 150 MB acumulados por página para evitar
+agotar memoria del navegador. Guardar los archivos y recargar para liberar espacio.
+Las playlists de Spotify siguen usando alokhamil.my.id y su generador ZIP.
+El adaptador Apify queda opcional mediante `BPM_MEDIA_ENGINE=apify`; ver [APIFY.md](APIFY.md).

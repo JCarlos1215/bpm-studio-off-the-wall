@@ -6,6 +6,7 @@ import engine
 
 @pytest.fixture
 def configured(monkeypatch):
+    monkeypatch.setenv('BPM_MEDIA_ENGINE', 'apify')
     monkeypatch.setenv('APIFY_TOKEN', 'test-server-secret')
     monkeypatch.setenv('APIFY_TASK_ID', 'task123')
     monkeypatch.setenv('APIFY_DOWNLOAD_HOSTS', 'bucket.example.org')
@@ -13,6 +14,7 @@ def configured(monkeypatch):
 
 def test_unconfigured_api_does_not_charge(tmp_path, monkeypatch):
     from app import create_app
+    monkeypatch.setenv('BPM_MEDIA_ENGINE', 'apify')
     monkeypatch.delenv('APIFY_TOKEN', raising=False)
     app = create_app(tmp_path)
     try:

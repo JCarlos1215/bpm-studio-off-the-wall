@@ -113,8 +113,13 @@ def create_app(data_dir=None):
 
     @app.get('/api/media/config')
     def media_config():
-        import apify_media
-        return jsonify(apify_media.configuration())
+        if os.getenv('BPM_MEDIA_ENGINE', 'native') == 'apify':
+            import apify_media
+            return jsonify(apify_media.configuration())
+        return jsonify(provider='native', configured=True,
+                       concurrency=int(os.getenv('MAX_CONCURRENT_JOBS', '2')),
+                       queue_limit=int(os.getenv('MAX_QUEUED_JOBS', '100')),
+                       message='API propia de BPM disponible. YouTube y SoundCloud; la disponibilidad depende de la fuente.')
 
     @app.post('/api/media/jobs')
     def media_create():
@@ -139,6 +144,12 @@ def create_app(data_dir=None):
         playlist = payload.get('playlist', False)
         if type(bitrate) is not int or bitrate not in (128, 192, 256, 320) or type(playlist) is not bool:
             raise ValueError('Opciones de descarga no válidas.')
+        if os.getenv('BPM_MEDIA_ENGINE', 'native') != 'apify':
+            if provider == 'youtube' and not playlist:
+                if list_path:
+                    raise ValueError('Activa la opción de playlist para descargar una lista de YouTube.')
+                query = 'https://www.youtube.com/watch?v=' + video
+            return jsonify(job=store.create(query, {'bitrate': bitrate, 'playlist': playlist, 'tags': True, 'lyrics': False})), 202
         import apify_media
         if provider != 'youtube' or list_path:
             raise ValueError('Apify admite aquí enlaces de videos individuales de YouTube. Las playlists de Spotify conservan su descarga ZIP.')

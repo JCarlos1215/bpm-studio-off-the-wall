@@ -1,0 +1,25 @@
+# Perfil de capacidad: NO es un plan gratuito ni una medición de rendimiento.
+# Requiere Docker Compose moderno y un host dimensionado tras pruebas de carga.
+services:
+  api:
+    build:
+      context: ../off-the-wall-mp3-studio
+    ports:
+      - "127.0.0.1:8093:8093"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8093
+      DATA_DIR: /app/data
+      ALLOW_PUBLIC_ACCESS: "true"
+      BPM_MEDIA_ENGINE: native
+      MAX_CONCURRENT_JOBS: "100"
+      MAX_QUEUED_JOBS: "200"
+      MAX_PLAYLIST_ITEMS: "20"
+    volumes:
+      - jobs:/app/data
+    cpus: 16
+    mem_limit: 32g
+    pids_limit: 1024
+    restart: unless-stopped
+volumes:
+  jobs:

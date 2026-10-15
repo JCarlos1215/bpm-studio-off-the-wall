@@ -5,6 +5,7 @@ ORIGIN='https://jcarlos1215.github.io'
 HEADERS={'Origin':ORIGIN,'X-Requested-With':'AllToMP3'}
 @pytest.fixture
 def application(tmp_path,monkeypatch):
+ monkeypatch.setenv('BPM_MEDIA_ENGINE','apify')
  monkeypatch.setenv('APIFY_TOKEN','test-secret')
  monkeypatch.setenv('APIFY_TASK_ID','task123')
  monkeypatch.setenv('APIFY_DOWNLOAD_HOSTS','bucket.example.org')

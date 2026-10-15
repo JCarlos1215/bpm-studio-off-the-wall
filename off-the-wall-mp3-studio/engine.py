@@ -151,7 +151,11 @@ class JobStore:
         self.db = self.root / 'jobs.sqlite3'
         self.jobs = {}
         self.events = {}
-        self.executor = ThreadPoolExecutor(max_workers=int(os.getenv('MAX_CONCURRENT_JOBS', '2')))
+        self.concurrency = int(os.getenv('MAX_CONCURRENT_JOBS', '2'))
+        self.queue_limit = int(os.getenv('MAX_QUEUED_JOBS', '100'))
+        if not 1 <= self.concurrency <= 100 or not self.concurrency <= self.queue_limit <= 1000:
+            raise ValueError('Configura de 1 a 100 trabajadores y una cola entre el número de trabajadores y 1000.')
+        self.executor = ThreadPoolExecutor(max_workers=self.concurrency)
         with sqlite3.connect(self.db) as conn:
             conn.execute('CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, data TEXT NOT NULL)')
             for identifier, data in conn.execute('SELECT id, data FROM jobs'):
@@ -189,7 +193,7 @@ class JobStore:
     def create(self, query, options):
         providers.source_type(query)
         with self.lock:
-            if sum(j['status'] not in TERMINAL for j in self.jobs.values()) >= 8:
+            if sum(j['status'] not in TERMINAL for j in self.jobs.values()) >= self.queue_limit:
                 raise providers.SourceError('La cola está llena. Espera a que termine una conversión.')
             identifier = uuid.uuid4().hex
             job = {'id': identifier, 'query': query, 'title': query, 'status': 'queued',
