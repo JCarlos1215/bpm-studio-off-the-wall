@@ -6,7 +6,7 @@
 
 - **Analizador BPM en tiempo real** con micrófono, espectro, onda y mediciones de señal
 - **Procesamiento de audio/video** en el navegador vía `@ffmpeg/ffmpeg` (WebAssembly)
-- **Download Manager** con búsqueda musical, biblioteca, historial y etiquetas ID3
+- **Download Manager** con Spotify Utils, reproducción, contadores y playlists ZIP
 - **Rekordbox Explorer** para explorar y audicionar una biblioteca USB directamente en el navegador
 - **Analizador DJ local** para estimar tonalidad, Camelot, BPM, energía y sugerir Hot Cues
 - **Video de fondo local** convertido a un formato compatible con navegadores
@@ -18,20 +18,18 @@
 | Frontend | HTML, CSS, JavaScript (ESM) |
 | Procesamiento multimedia | `@ffmpeg/ffmpeg` 0.12.15 (MIT), `@ffmpeg/core` 0.12.10 (GPLv3) |
 | Conversión local | `@ffmpeg/ffmpeg` y WebAssembly |
-| Download Manager | Python, Flask, yt-dlp y FFmpeg |
+| Download Manager | Spotify Utils estático, API/proxy alokhamil.my.id; metadatos públicos vía Flask |
 | Rekordbox Explorer | React, Vite y TypeScript; lectura local de la USB |
-| Ejecución | Frontend estático y servidor local para Download Manager |
+| Ejecución | Frontend estático; conexión a proveedores externos para Download Manager |
 
 ## 🌐 Versión web
 
 La versión estática está publicada en [GitHub Pages](https://jcarlos1215.github.io/bpm-studio-off-the-wall/).
 El analizador BPM, el convertidor, Rekordbox Explorer y el analizador DJ funcionan en el
-navegador. Download Manager se conecta al servidor Python gratuito de Render; puedes elegir
-acceder sin contraseña desde cualquier dispositivo. El servidor queda abierto para quien
-tenga el enlace y puede tardar cerca de un minuto en despertar después de estar inactivo. Su
-almacenamiento no es permanente; descarga tus conversiones antes de que el servicio se
-reinicie. Para configurar tu propia instancia, sigue las instrucciones de
-[`off-the-wall-mp3-studio/README.md`](off-the-wall-mp3-studio/README.md#render-gratuito).
+navegador. Download Manager muestra Spotify Utils dentro de su iframe. Búsqueda,
+reproducción y MP3 usan `alokhamil.my.id`; los ZIP se generan en el navegador.
+Importar playlists públicas usa el backend Render existente solo para metadatos.
+Ver [detalles, límites y créditos](spotify-utils/README.md).
 
 ## 🚀 Puesta en marcha local
 
@@ -59,8 +57,8 @@ búsquedas y descargas de Download Manager requieren conexión a servicios exter
 
 ### Download Manager
 
-El servidor local de Download Manager se inicia automáticamente con el comando principal. Para
-instalar o administrar sus dependencias, consulta
+El iframe actual carga `spotify-utils/`; no requiere ejecutar el servidor Python local.
+El iniciador conserva el servidor anterior para compatibilidad. Para administrar esa versión, consulta
 [`off-the-wall-mp3-studio/README.md`](off-the-wall-mp3-studio/README.md).
 
 **Rekordbox Explorer** se sirve desde su build local en `rekordbox-explorer-main/dist/` y se muestra dentro de esta página. Selecciona una carpeta USB en Chrome, Edge u Opera; otros navegadores pueden seleccionar `export.pdb`. El análisis de la biblioteca ocurre en el navegador, sin subir archivos.
@@ -85,10 +83,10 @@ consulta sus límites y detalles en [`key-bpm-analyzer/README.md`](key-bpm-analy
 - `@ffmpeg/core` (binario WASM + codecs): **GPLv3** — ver `vendor/license-gplv3.txt`
 - Logo de usuario: fuera de licencia GPL
 
-> **Nota**: Download Manager requiere el servidor Python local. La conversión de archivos del navegador permanece en este dispositivo.
+> **Nota**: Download Manager requiere conexión a sus proveedores externos. La conversión multimedia del navegador permanece en este dispositivo.
 ### Reparación de Download Manager (6 de octubre de 2026)
 
-El iframe activo (`mp3Frame` en `index.html`) utiliza `https://jcarlos1215-bpm-studio-off-the-wall-mp3.onrender.com`, el backend incluido en este repositorio. Los archivos antiguos `downloader.js` y `downloader-config.js` no se cargan desde la página actual; su dirección `descargador-pro-co95.onrender.com` pertenece a otra aplicación. En localhost el iframe utiliza el puerto 8093 que levanta el iniciador.
+En la versión del 6 de octubre, el iframe (`mp3Frame` en `index.html`) utilizaba `https://jcarlos1215-bpm-studio-off-the-wall-mp3.onrender.com`, el backend incluido en este repositorio. Los archivos antiguos `downloader.js` y `downloader-config.js` no se cargan desde la página actual; su dirección `descargador-pro-co95.onrender.com` pertenece a otra aplicación. Ese backend permanece disponible y sirve los metadatos de playlists públicas; el iframe actual carga Spotify Utils localmente.
 
 El flujo conserva la arquitectura de AllToMP3: SoundCloud se extrae desde su enlace; Spotify resuelve metadatos (API o embed público) y busca audio equivalente en YouTube. El archivo no procede del audio protegido de Spotify y puede corresponder a otra versión. Se instala `yt-dlp[default]` para mantener compatibles los componentes EJS. `/api/status` expone sus versiones y la disponibilidad de Node.js 22 o posterior.
 
@@ -168,9 +166,20 @@ aceptan `BPM_TEST_BASE_URL` para verificar GitHub Pages.
 
 ### Spotify Utils
 
-La nueva pestaña **Spotify Utils** carga el iframe local `spotify-utils/`, adaptación
+La pestaña **Download Manager** carga el iframe local `spotify-utils/`, adaptación
 estática del frontend de [TheyanzXD/spotify-utils](https://github.com/TheyanzXD/spotify-utils).
 Usa exclusivamente **https://alokhamil.my.id/** como API y proxy para búsqueda,
 reproducción y descarga. Incluye lista de resultados, reproductor con anterior y
 siguiente, avance automático y guardado de MP3 sin salir del iframe. La disponibilidad
 y la versión del audio dependen del proveedor. Ver [detalles y créditos](spotify-utils/README.md).
+
+### Download Manager con Spotify Utils y ZIP
+
+`mp3Frame` carga ahora `spotify-utils/` en la pestaña **Download Manager**, tanto
+en localhost como en GitHub Pages. La pestaña separada Spotify Utils se unificó
+con Download Manager para conservar una sola playlist y sus contadores. Búsqueda
+y audio utilizan `alokhamil.my.id`; importar enlaces públicos de Spotify utiliza
+solo la ruta de metadatos del backend Render existente. Incluye playlists ZIP,
+M3U8, reporte de fallos, cancelación y contadores de sesión. Hasta 50 canciones y
+150 MB de audio por ZIP. El servidor antiguo sigue en el repositorio, pero ya no
+es la interfaz que se presenta dentro de `mp3Frame`.

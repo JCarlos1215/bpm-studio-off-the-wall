@@ -5,7 +5,7 @@ Adaptación estática para GitHub Pages del frontend de
 `a4cad680c80381610db1eb1986e6b7bff98f343e`. Conserva el flujo de búsqueda, resultados,
 reproducción con anterior/siguiente y avance al terminar, y preparación/descarga de
 MP3 del proyecto original. Interfaz en español, accesible y embebida en un iframe
-local; no requiere desplegar Next.js ni ejecutar su servidor.
+local en la pestaña **Download Manager** (`mp3Frame`); no requiere desplegar Next.js ni ejecutar su servidor.
 
 La API base está fijada a **https://alokhamil.my.id/**, como solicitó el usuario:
 
