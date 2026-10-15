@@ -167,3 +167,17 @@ def test_empty_fallback_explains_both_sources(monkeypatch):
     monkeypatch.setattr(providers, 'soundcloud_search', Mock(return_value=[]))
     with pytest.raises(providers.SourceError, match='SoundCloud no encontró'):
         providers.search('Unknown artist')
+
+
+def test_session_diagnostic_does_not_claim_authentication_or_read_secret(tmp_path, monkeypatch):
+    assert providers.youtube_session_status() == {'configured': False, 'readable': False, 'authentication_verified': False}
+    secret = tmp_path / 'private-session.txt'
+    secret.write_text('sensitive-cookie-fixture')
+    monkeypatch.setenv('YTDLP_COOKIES_FILE', str(secret))
+    # The diagnostic uses metadata only. Actual cookie loading belongs to yt-dlp.
+    monkeypatch.setattr(Path, 'read_text', lambda *a, **k: pytest.fail('Diagnostic read a secret'))
+    status = providers.youtube_session_status()
+    assert status == {'configured': True, 'readable': True, 'authentication_verified': False}
+    assert 'private-session' not in str(status) and 'sensitive-cookie' not in str(status)
+    secret.unlink()
+    assert providers.youtube_session_status()['readable'] is False

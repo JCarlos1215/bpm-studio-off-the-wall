@@ -80,6 +80,19 @@ def ydl_options(**extra):
     }
 
 
+def youtube_session_status():
+    """Report file availability only; never expose cookies, paths, or claim login success."""
+    cookie_file = os.getenv('YTDLP_COOKIES_FILE', '').strip()
+    readable = False
+    if cookie_file:
+        try:
+            readable = os.path.isfile(cookie_file) and os.access(cookie_file, os.R_OK)
+        except OSError:
+            pass
+    return {'configured': bool(cookie_file), 'readable': readable,
+            'authentication_verified': False}
+
+
 def downloader_status():
     """Expose runtime versions without credentials or filesystem paths."""
     packages = {}
@@ -98,7 +111,8 @@ def downloader_status():
     major = int(node_version.lstrip('v').split('.')[0]) if node_version else 0
     return {**packages, 'node': node_version,
             'javascript_ready': major >= 22 and bool(packages['yt-dlp-ejs']),
-            'youtube_cooldown_seconds': youtube_cooldown_remaining()}
+            'youtube_cooldown_seconds': youtube_cooldown_remaining(),
+            'youtube_session': youtube_session_status()}
 
 
 class ExtractionLogger:
