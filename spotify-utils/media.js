@@ -61,5 +61,6 @@ export function initMedia(onStates){
   }catch(error){if(run.cancelled&&!run.id){onStates(run.key,['error']);status('No se pudo confirmar la creación o cancelación en el servidor. Intenta de nuevo.','error');}else if(!run.cancelled){onStates(run.key,(run.lastStates||['processing']).map(s=>s==='ready'?'ready':'error'));status(error.name==='AbortError'?'La conexión se interrumpió. Puedes reintentar.':error.message,'error');}}
   finally{clearTimeout(timer);if(run.id&&run.cancelled)onStates(run.key,(run.lastStates||['processing']).map(s=>['ready','error'].includes(s)?s:'canceled'));if(active===run){active=null;controls(false);$('media-cancel').disabled=false;$('media-progress').hidden=$('media-save').hidden;}}
  });
+ controls(false);
  window.addEventListener('pagehide',()=>{if(active?.id)fetch(new URL(`/api/media/jobs/${active.id}/cancel`,BACKEND),{method:'POST',headers:{'X-Requested-With':'AllToMP3'},keepalive:true}).catch(()=>{});active?.abort.abort();clear();});
 }
