@@ -81,3 +81,34 @@ Si cancelas, puedes crear un ZIP con las que ya estaban listas. Reiniciar la tan
 o editar la playlist invalida el enlace ZIP anterior. No se persisten archivos
 al recargar. `python tests/spotify-playlist.py` comprueba ZIP real, CRC, nombres
 Unicode, canciones intactas, reportes, contadores, importación, errores y cancelación.
+
+## YouTube y SoundCloud con yt-dlp
+
+El formulario de enlaces usa el backend existente de BPM Studio mediante las rutas
+`/api/media/jobs`, `/api/media/jobs/{id}`, `/cancel`, `/tracks/{index}/download` y
+`/archive`. Convierte a MP3 (128, 192, 256 o 320 kbps), muestra progreso, permite
+cancelar y guarda MP3 o ZIP desde un Blob dentro del iframe. Los contadores también
+incluyen estos trabajos. No sustituye un video solicitado por una canción de otro
+sitio. Límites heredados del servidor: 30 minutos por pista, 20 pistas por lista en
+Render; recepción máxima de 150 MB y seguimiento de hasta 20 minutos por solicitud.
+
+En GitHub Pages usa Render; en localhost:8080 usa el servidor local :8093. El nuevo
+CORS queda limitado a estas rutas y a GitHub Pages / localhost:8080. Los POST siguen
+requiriendo `X-Requested-With: AllToMP3`; la protección de los endpoints antiguos no
+se relajó. Se validan proveedor, enlaces de video/lista y calidad antes de crear
+trabajos. El audio se descarga con yt-dlp y se convierte con FFmpeg. La versión de
+yt-dlp se actualizó a `2026.10.10.233141.dev0`, comprobada en PyPI.
+
+Los sitios proporcionados se revisaron como posibles proveedores, pero no se
+anuncian como alternativas operativas: `ytdn.netlify.app` ofrece la aplicación de
+escritorio ytDownloader, no una API de conversión; Y2Mate permite autenticación de
+su flujo público pero rechazó iniciar la conversión (403); SaveFrom y
+`v39.www-y2mate.com` no fueron accesibles desde el entorno. No se integraron sus
+scripts publicitarios, ventanas emergentes ni redirecciones. No se eluden captchas,
+autenticación o bloqueos. YouTube devolvió 429 en la prueba inicial del servidor;
+se muestra ese error y se puede reintentar cuando el proveedor lo permita.
+
+Pruebas: `python tests/media-download.py` valida recepción de MP3, progreso,
+contadores, error 429, cancelación y móvil con backend simulado; en
+`off-the-wall-mp3-studio/`, `python -m pytest tests/test_media.py` comprueba CORS,
+validación y rutas. SoundCloud se comprobó con una conversión real en Render.

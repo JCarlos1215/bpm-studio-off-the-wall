@@ -1,7 +1,8 @@
 import hmac
 import os
+import re
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 from dotenv import load_dotenv
 
@@ -21,6 +22,7 @@ def create_app(data_dir=None):
     app.config['TRUSTED_HOSTS'] = ['localhost', '127.0.0.1', '[::1]'] if not os.getenv('APP_PASSWORD') and not public_access else None
     store = JobStore(data_dir or os.getenv('DATA_DIR') or ROOT / 'data')
     app.extensions['jobs'] = store
+    media_origins = {'https://jcarlos1215.github.io', 'http://127.0.0.1:8080', 'http://localhost:8080'}
 
     @app.before_request
     def protect():
@@ -32,7 +34,8 @@ def create_app(data_dir=None):
                                 {'WWW-Authenticate': 'Basic realm="Download Manager", charset="UTF-8"'})
         if request.method in ('POST', 'PATCH', 'DELETE'):
             origin = request.headers.get('Origin')
-            if origin and urlparse(origin).netloc != request.host:
+            media_request = request.path.startswith('/api/media/') and origin in media_origins
+            if origin and urlparse(origin).netloc != request.host and not media_request:
                 return jsonify(error='Origen de solicitud no permitido.'), 403
             if request.headers.get('X-Requested-With') != 'AllToMP3':
                 return jsonify(error='Falta la cabecera de protección de solicitudes.'), 403
@@ -53,6 +56,11 @@ def create_app(data_dir=None):
             if origin in {'https://jcarlos1215.github.io', 'http://127.0.0.1:8080', 'http://localhost:8080'}:
                 response.headers['Access-Control-Allow-Origin'] = origin
                 response.headers.add('Vary', 'Origin')
+        if request.path.startswith('/api/media/') and request.headers.get('Origin') in media_origins:
+            response.headers['Access-Control-Allow-Origin'] = request.headers['Origin']
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Requested-With'
+            response.headers.add('Vary', 'Origin')
         return response
 
     @app.errorhandler(Exception)
@@ -102,6 +110,49 @@ def create_app(data_dir=None):
     @app.get('/api/jobs')
     def jobs():
         return jsonify(jobs=store.list())
+
+    @app.post('/api/media/jobs')
+    def media_create():
+        payload = request.get_json()
+        if not isinstance(payload, dict) or not isinstance(payload.get('url'), str):
+            raise ValueError('Pega un enlace de YouTube o SoundCloud.')
+        query = payload['url'].strip()
+        provider = providers.source_type(query)
+        if provider not in {'youtube', 'soundcloud'}:
+            raise ValueError('Este formulario admite únicamente enlaces de YouTube y SoundCloud.')
+        parsed = urlparse(query)
+        values = parse_qs(parsed.query)
+        if provider == 'youtube':
+            video = (values.get('v') or [''])[0] if parsed.path.rstrip('/') == '/watch' else parsed.path.rstrip('/').split('/')[-1]
+            video_path = parsed.hostname == 'youtu.be' or parsed.path.rstrip('/') == '/watch' or bool(re.fullmatch(r'/(shorts|embed|live)/[A-Za-z0-9_-]{11}/?', parsed.path))
+            list_path = parsed.path.rstrip('/') == '/playlist' and bool(re.fullmatch(r'[A-Za-z0-9_-]{10,120}', (values.get('list') or [''])[0]))
+            if not (video_path and re.fullmatch(r'[A-Za-z0-9_-]{11}', video) or list_path):
+                raise ValueError('Usa el enlace de un video o una playlist de YouTube.')
+        elif not re.fullmatch(r'/[A-Za-z0-9_-]+/(?:sets/)?[A-Za-z0-9_-]+/?', parsed.path) or values.get('secret_token'):
+            raise ValueError('Usa el enlace público de una canción o un set de SoundCloud.')
+        bitrate = payload.get('bitrate', 192)
+        playlist = payload.get('playlist', False)
+        if type(bitrate) is not int or bitrate not in (128, 192, 256, 320) or type(playlist) is not bool:
+            raise ValueError('Opciones de descarga no válidas.')
+        return jsonify(job=store.create(query, {'bitrate': bitrate, 'playlist': playlist, 'tags': True, 'lyrics': False})), 202
+
+    @app.get('/api/media/jobs/<identifier>')
+    def media_job(identifier):
+        return jsonify(job=store.get(identifier))
+
+    @app.post('/api/media/jobs/<identifier>/cancel')
+    def media_cancel(identifier):
+        return jsonify(job=store.cancel(identifier))
+
+    @app.get('/api/media/jobs/<identifier>/tracks/<int:index>/download')
+    def media_download(identifier, index):
+        path, name = store.track_file(identifier, index)
+        return send_file(path, as_attachment=True, download_name=name, mimetype='audio/mpeg')
+
+    @app.get('/api/media/jobs/<identifier>/archive')
+    def media_archive(identifier):
+        path, name = store.archive(identifier)
+        return send_file(path, as_attachment=True, download_name=name, mimetype='application/zip')
 
     @app.get('/api/spotify/playlist')
     def spotify_playlist():

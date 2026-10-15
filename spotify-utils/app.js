@@ -1,3 +1,4 @@
+import {initMedia} from './media.js?v=media-20261014-1';
 import {createZip} from './zip.js?v=playlist-20261014-1';
 // Static adaptation of TheyanzXD/spotify-utils: API and media remain on the requested provider.
 const API=new URL('https://alokhamil.my.id/');
@@ -204,3 +205,6 @@ $('partial-zip').addEventListener('click',async()=>{
   finally{zipRunning=false;zipController=null;drawQueue();render();$('partial-zip').hidden=Boolean(zipURL)||!queue.some(t=>t.blob);}
 });
 drawQueue();stats();
+
+const mediaRecords=new Map();
+initMedia((key,states)=>{let records=mediaRecords.get(key);if(!records){records=[];mediaRecords.set(key,records);}while(records.length<states.length){const record={state:'queued'};records.push(record);conversions.push(record);}records.forEach((record,i)=>{record.state=states[i]||'canceled';});stats();});

@@ -183,3 +183,9 @@ solo la ruta de metadatos del backend Render existente. Incluye playlists ZIP,
 M3U8, reporte de fallos, cancelación y contadores de sesión. Hasta 50 canciones y
 150 MB de audio por ZIP. El servidor antiguo sigue en el repositorio, pero ya no
 es la interfaz que se presenta dentro de `mp3Frame`.
+
+Download Manager incluye además descarga por enlace de YouTube y SoundCloud con
+**yt-dlp + FFmpeg**, calidad MP3 seleccionable, progreso, cancelación y listas ZIP.
+Este audio se procesa en el backend existente; la búsqueda musical de Spotify
+Utils conserva la API/proxy de alokhamil.my.id. Los límites o bloqueos de cada
+plataforma se muestran como errores, sin cambiar la fuente solicitada.
