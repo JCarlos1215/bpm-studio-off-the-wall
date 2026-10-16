@@ -25,7 +25,10 @@ integración oficial de JEANE ni garantiza resultados idénticos a su motor.
   loudness; no implementa copia automática de EQ ni timbre de referencia.
 - Ajustes JSON, historial de hasta diez ajustes en localStorage y borrado manual.
 - Lotes de diez pistas en secuencia con ZIP e informe; los errores individuales
-  no descartan los archivos correctos. Cancelar conserva los ya procesados.
+  no descartan los archivos correctos. Cancelar conserva los ya procesados. El
+  informe registra todas las pistas, incluidas las canceladas. Al iniciar otro
+  lote se retira el enlace ZIP anterior; el original y el master del editor
+  individual permanecen disponibles.
 
 ## Motor y precisión
 
@@ -55,7 +58,8 @@ Archivo individual de hasta 60 MB y diez minutos. Lote de hasta 150 MB de entrad
 y 150 MB de archivos resultantes. Solo se procesa una pista a la vez. El volumen
 WASM, los originales y las copias temporales requieren memoria: los límites de
 archivo no garantizan que una pista larga funcione en todos los iPhone. Se puede
-cancelar terminando el worker y volver a cargarlo. No se guardan audios en el
+cancelar terminando el worker y volver a cargarlo. Si falla la carga del motor
+por un corte de red, se puede reintentar sin recargar la página. No se guardan audios en el
 historial; se liberan los temporales al cerrar la página. Mantener la pestaña
 abierta durante el proceso.
 
@@ -70,3 +74,8 @@ Procesa audio sintético con el motor WASM real, activa los módulos, exporta FL
 48 kHz, comprueba mono y duración, mide el archivo con FFmpeg nativo, prueba
 referencia, sesión JSON, A/B, pausa al cambiar de tab, cancelación, ZIP real y
 layout móvil. No envía canciones a servicios externos.
+
+`python tests/mastering-recovery.py` comprueba un fallo real de carga del core y
+su recuperación, WAV16/FLAC24, ZIP parcial al cancelar un lote, informe con todas
+las pistas, reemplazo del ZIP anterior, continuidad tras un archivo inválido y
+conservación del editor individual. Usa exclusivamente audio sintético local.
